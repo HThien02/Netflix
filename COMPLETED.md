@@ -161,8 +161,8 @@ netflix-saas/
 
 ### Supabase Credentials (Your Project)
 ```
-URL: https://zfqnwzbzoxmpnpivbwgj.supabase.co
-Key: sb_publishable_nBldv-gQlt8Ka7xWCVUW4Q_nRa-JvQJ
+URL: (set in .env.local — see SUPABASE_SETUP.md)
+Key: (set in .env.local)
 ```
 
 ### Auto-configured by v0

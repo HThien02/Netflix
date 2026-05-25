@@ -162,7 +162,7 @@ A: SETUP_SUPABASE.md → Supabase Dashboard → Table Editor
 A: demo123 (cho tất cả demo accounts)
 
 **Q: Database ở đâu?**
-A: Supabase → https://zfqnwzbzoxmpnpivbwgj.supabase.co
+A: Supabase → see SUPABASE_SETUP.md and your project dashboard
 
 **Q: Làm sao deploy?**
 A: HUONG_DAN_VIET.md → Production section
