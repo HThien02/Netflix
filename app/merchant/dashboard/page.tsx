@@ -176,7 +176,7 @@ export default function MerchantDashboardPage() {
                     dataKey="revenue"
                     stroke="#E50914"
                     dot={{ fill: '#E50914' }}
-                    name="Revenue ($)"
+                    name="Revenue (VND)"
                   />
                 </LineChart>
               </ResponsiveContainer>

@@ -6,24 +6,24 @@ import { useApp } from '@/lib/context'
 import { t } from '@/lib/translations'
 import { Menu, X, LogOut, ShoppingCart, User, Settings } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { BrandLogo } from '@/components/brand-logo'
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
-  const { currentUser, language, setLanguage, isAuthenticated, setIsAuthenticated, setCurrentUser } = useApp()
+  const { currentUser, language, setLanguage, isAuthenticated, authReady, logout } = useApp()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const handleLogout = () => {
-    setCurrentUser(null)
-    setIsAuthenticated(false)
-    localStorage.removeItem('currentUser')
-    localStorage.removeItem('isAuthenticated')
+    logout()
   }
 
   const navItems = isAuthenticated
     ? [
         { label: t('nav.home', language), href: '/' },
         { label: t('nav.marketplace', language), href: '/marketplace' },
-        { label: t('nav.subscriptions', language), href: '/subscriptions' },
-        { label: t('nav.dashboard', language), href: '/dashboard' },
+        { label: t('nav.myAccounts', language), href: '/my-accounts' },
+        ...(currentUser?.role === 'admin'
+          ? [{ label: t('admin.dashboard', language), href: '/admin/products' }]
+          : []),
       ]
     : [
         { label: t('nav.home', language), href: '/' },
@@ -37,9 +37,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
-            <Link href="/" className="flex items-center gap-2">
-              <div className="text-3xl font-bold text-netflix-red">N</div>
-              <span className="text-xl font-bold text-white hidden sm:inline">NetflixHub</span>
+            <Link href="/" className="flex items-center">
+              <BrandLogo />
             </Link>
 
             {/* Desktop Navigation */}
@@ -73,7 +72,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               )}
 
               {/* User Menu / Auth Buttons */}
-              {isAuthenticated && currentUser ? (
+              {authReady && isAuthenticated && currentUser ? (
                 <div className="flex items-center gap-4">
                   <div className="hidden sm:flex items-center gap-3">
                     <img
@@ -91,7 +90,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     <span className="hidden sm:inline">{t('nav.logout', language)}</span>
                   </button>
                 </div>
-              ) : (
+              ) : authReady ? (
                 <div className="flex items-center gap-2">
                   <Link
                     href="/auth/login"
@@ -107,7 +106,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     {t('nav.signUp', language)}
                   </Link>
                 </div>
-              )}
+              ) : null}
 
               {/* Mobile Menu Button */}
               <button
@@ -149,39 +148,38 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
             <div>
-              <h3 className="text-white font-bold mb-4 flex items-center gap-2">
-                <span className="text-2xl text-netflix-red">N</span>
-                NetflixHub
+              <h3 className="text-white font-bold mb-4">
+                <BrandLogo size="sm" />
               </h3>
-              <p className="text-gray-400 text-sm">The ultimate streaming subscription marketplace</p>
+              <p className="text-gray-400 text-sm">{t('footer.tagline', language)}</p>
             </div>
             <div>
               <h4 className="text-white font-semibold mb-4">{t('nav.marketplace', language)}</h4>
               <ul className="space-y-2 text-gray-400 text-sm">
-                <li><Link href="#" className="hover:text-netflix-red transition-colors">Popular Plans</Link></li>
-                <li><Link href="#" className="hover:text-netflix-red transition-colors">All Categories</Link></li>
-                <li><Link href="#" className="hover:text-netflix-red transition-colors">Deals</Link></li>
+                <li><Link href="/marketplace" className="hover:text-netflix-red transition-colors">{t('footer.popular', language)}</Link></li>
+                <li><Link href="/marketplace" className="hover:text-netflix-red transition-colors">{t('footer.categories', language)}</Link></li>
+                <li><Link href="/marketplace" className="hover:text-netflix-red transition-colors">{t('footer.deals', language)}</Link></li>
               </ul>
             </div>
             <div>
-              <h4 className="text-white font-semibold mb-4">Support</h4>
+              <h4 className="text-white font-semibold mb-4">{t('footer.support', language)}</h4>
               <ul className="space-y-2 text-gray-400 text-sm">
-                <li><Link href="#" className="hover:text-netflix-red transition-colors">Help Center</Link></li>
-                <li><Link href="#" className="hover:text-netflix-red transition-colors">Contact Us</Link></li>
-                <li><Link href="#" className="hover:text-netflix-red transition-colors">Terms</Link></li>
+                <li><Link href="/support/tickets" className="hover:text-netflix-red transition-colors">{t('footer.help', language)}</Link></li>
+                <li><Link href="/support/tickets" className="hover:text-netflix-red transition-colors">{t('footer.contact', language)}</Link></li>
+                <li><Link href="#" className="hover:text-netflix-red transition-colors">{t('footer.terms', language)}</Link></li>
               </ul>
             </div>
             <div>
-              <h4 className="text-white font-semibold mb-4">Legal</h4>
+              <h4 className="text-white font-semibold mb-4">{t('footer.legal', language)}</h4>
               <ul className="space-y-2 text-gray-400 text-sm">
-                <li><Link href="#" className="hover:text-netflix-red transition-colors">Privacy Policy</Link></li>
-                <li><Link href="#" className="hover:text-netflix-red transition-colors">Terms of Service</Link></li>
-                <li><Link href="#" className="hover:text-netflix-red transition-colors">Cookie Policy</Link></li>
+                <li><Link href="#" className="hover:text-netflix-red transition-colors">{t('footer.privacy', language)}</Link></li>
+                <li><Link href="#" className="hover:text-netflix-red transition-colors">{t('footer.tos', language)}</Link></li>
+                <li><Link href="#" className="hover:text-netflix-red transition-colors">{t('footer.cookies', language)}</Link></li>
               </ul>
             </div>
           </div>
           <div className="border-t border-netflix-dark pt-8 flex flex-col md:flex-row justify-between items-center">
-            <p className="text-gray-400 text-sm">&copy; 2024 NetflixHub. All rights reserved.</p>
+            <p className="text-gray-400 text-sm">&copy; 2024 NetflixHub. {t('footer.rights', language)}</p>
             <div className="flex gap-4 mt-4 md:mt-0">
               <a href="#" className="text-gray-400 hover:text-netflix-red transition-colors">Twitter</a>
               <a href="#" className="text-gray-400 hover:text-netflix-red transition-colors">Facebook</a>

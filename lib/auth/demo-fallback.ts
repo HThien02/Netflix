@@ -79,3 +79,7 @@ export function loginWithDemoFallback(
   if (user && password === 'demo123') return user
   return null
 }
+
+export function getDemoUserById(userId: string): User | null {
+  return Object.values(DEMO_USERS).find((u) => u.id === userId) || null
+}

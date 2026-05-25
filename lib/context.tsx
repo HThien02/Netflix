@@ -1,61 +1,145 @@
 'use client'
 
-import React, { createContext, useContext, useState, useEffect } from 'react'
-import { User, Cart, Subscription, Invoice } from './types'
-import { mockCurrentUser, mockSubscriptions, mockInvoices } from './mock-data'
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { User, Cart, Subscription, Invoice, PurchasedAccount } from './types'
+import { loadUserData } from './user-data'
+import {
+  loadInvoicesLocal,
+  loadPurchasedAccountsLocal,
+} from './orders/complete-purchase'
 
 interface AppContextType {
   currentUser: User | null
   setCurrentUser: (user: User | null) => void
   cart: Cart | null
-  setCart: (cart: Cart) => void
+  setCart: (cart: Cart | null) => void
   isAuthenticated: boolean
   setIsAuthenticated: (authenticated: boolean) => void
+  authReady: boolean
   language: 'vi' | 'en'
   setLanguage: (lang: 'vi' | 'en') => void
   userSubscriptions: Subscription[]
   setUserSubscriptions: (subs: Subscription[]) => void
   userInvoices: Invoice[]
   setUserInvoices: (invoices: Invoice[]) => void
+  purchasedAccounts: PurchasedAccount[]
+  setPurchasedAccounts: (accounts: PurchasedAccount[]) => void
+  refreshUserData: () => Promise<void>
+  logout: () => Promise<void>
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
 
+function mapApiUser(raw: {
+  id: string
+  email: string
+  fullName: string
+  role: User['role']
+  language?: 'vi' | 'en'
+  avatar?: string
+}): User {
+  return {
+    id: raw.id,
+    email: raw.email,
+    password: '',
+    fullName: raw.fullName,
+    role: raw.role,
+    language: raw.language ?? 'vi',
+    avatar: raw.avatar,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  }
+}
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [language, setLanguage] = useState<'vi' | 'en'>('en')
+  const [authReady, setAuthReady] = useState(false)
+  const [language, setLanguage] = useState<'vi' | 'en'>('vi')
   const [cart, setCart] = useState<Cart | null>(null)
   const [userSubscriptions, setUserSubscriptions] = useState<Subscription[]>([])
   const [userInvoices, setUserInvoices] = useState<Invoice[]>([])
+  const [purchasedAccounts, setPurchasedAccounts] = useState<PurchasedAccount[]>([])
 
-  // Load from localStorage on mount
-  useEffect(() => {
-    const savedUser = localStorage.getItem('currentUser')
-    const savedLanguage = localStorage.getItem('language') as 'vi' | 'en' | null
-    const savedCart = localStorage.getItem('cart')
-    const savedAuth = localStorage.getItem('isAuthenticated')
-
-    if (savedUser) {
-      const user = JSON.parse(savedUser)
-      setCurrentUser(user)
-      setIsAuthenticated(true)
-      
-      // Load user's subscriptions and invoices
-      setUserSubscriptions(mockSubscriptions.filter(s => s.userId === user.id))
-      setUserInvoices(mockInvoices.filter(i => i.userId === user.id))
-    }
-
-    if (savedLanguage) {
-      setLanguage(savedLanguage)
-    }
-
-    if (savedCart) {
-      setCart(JSON.parse(savedCart))
-    }
+  const applyUser = useCallback(async (user: User) => {
+    setCurrentUser(user)
+    setIsAuthenticated(true)
+    setLanguage(user.language === 'en' ? 'en' : 'vi')
+    setUserInvoices(loadInvoicesLocal(user.id))
+    setPurchasedAccounts(loadPurchasedAccountsLocal(user.id))
+    const data = await loadUserData(user.id)
+    setUserSubscriptions(data.subscriptions)
+    setUserInvoices(data.invoices)
+    setPurchasedAccounts(data.purchasedAccounts)
   }, [])
 
-  // Persist to localStorage whenever state changes
+  const clearAuth = useCallback(() => {
+    setCurrentUser(null)
+    setIsAuthenticated(false)
+    setUserSubscriptions([])
+    setUserInvoices([])
+    setPurchasedAccounts([])
+    localStorage.removeItem('currentUser')
+    localStorage.removeItem('isAuthenticated')
+  }, [])
+
+  const refreshUserData = async () => {
+    if (!currentUser?.id) return
+    const data = await loadUserData(currentUser.id)
+    setUserSubscriptions(data.subscriptions)
+    setUserInvoices(data.invoices)
+    setPurchasedAccounts(data.purchasedAccounts)
+  }
+
+  const logout = useCallback(async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' })
+    } catch {
+      /* ignore */
+    }
+    clearAuth()
+  }, [clearAuth])
+
+  // Khôi phục session từ cookie (HTTP-only) qua /api/auth/me
+  useEffect(() => {
+    let cancelled = false
+
+    async function initSession() {
+      const savedLanguage = localStorage.getItem('language') as 'vi' | 'en' | null
+      const savedCart = localStorage.getItem('cart')
+
+      if (savedLanguage === 'vi' || savedLanguage === 'en') {
+        setLanguage(savedLanguage)
+      }
+      if (savedCart) {
+        try {
+          setCart(JSON.parse(savedCart))
+        } catch {
+          localStorage.removeItem('cart')
+        }
+      }
+
+      try {
+        const res = await fetch('/api/auth/me', { credentials: 'same-origin' })
+        const data = await res.json()
+        if (!cancelled && data.user) {
+          await applyUser(mapApiUser(data.user))
+        } else if (!cancelled) {
+          clearAuth()
+        }
+      } catch {
+        if (!cancelled) clearAuth()
+      } finally {
+        if (!cancelled) setAuthReady(true)
+      }
+    }
+
+    initSession()
+    return () => {
+      cancelled = true
+    }
+  }, [applyUser, clearAuth])
+
   useEffect(() => {
     if (currentUser) {
       localStorage.setItem('currentUser', JSON.stringify(currentUser))
@@ -89,12 +173,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setCart,
         isAuthenticated,
         setIsAuthenticated,
+        authReady,
         language,
         setLanguage,
         userSubscriptions,
         setUserSubscriptions,
         userInvoices,
         setUserInvoices,
+        purchasedAccounts,
+        setPurchasedAccounts,
+        refreshUserData,
+        logout,
       }}
     >
       {children}

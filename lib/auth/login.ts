@@ -54,7 +54,6 @@ export async function loginWithSupabase(
     .maybeSingle()
 
   if (error) {
-    console.error('[auth] Supabase login error:', error)
     return { user: null, error: error.message }
   }
 

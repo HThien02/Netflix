@@ -2,22 +2,26 @@
 
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useRedirectIfAuthenticated } from '@/lib/hooks/use-redirect-if-authenticated'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useApp } from '@/lib/context'
 import { t } from '@/lib/translations'
 import { motion } from 'framer-motion'
-import { Eye, EyeOff, Mail, Lock } from 'lucide-react'
-import { authenticateUser } from '@/lib/auth/session'
-import { getUserSubscriptions, getUserInvoices } from '@/lib/supabase/queries'
+import { Eye, EyeOff, Mail, Lock, Sparkles } from 'lucide-react'
+import { loadUserData } from '@/lib/user-data'
 import type { User } from '@/lib/types'
+import { BrandLogo } from '@/components/brand-logo'
 
 export default function LoginPage() {
   const router = useRouter()
+  const { shouldShowAuthForm } = useRedirectIfAuthenticated()
   const {
     setCurrentUser,
     setIsAuthenticated,
     setUserSubscriptions,
     setUserInvoices,
+    setPurchasedAccounts,
     language,
   } = useApp()
   const [email, setEmail] = useState('')
@@ -26,53 +30,19 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const completeLogin = async (user: User, source: string) => {
+  if (!shouldShowAuthForm) {
+    return null
+  }
+
+  const completeLogin = async (user: User) => {
     setCurrentUser(user)
     setIsAuthenticated(true)
-    localStorage.setItem('currentUser', JSON.stringify(user))
-    localStorage.setItem('isAuthenticated', 'true')
+    sessionStorage.setItem('netflix-intro-sound-unlocked', '1')
 
-    if (source === 'supabase') {
-      const [subs, invoices] = await Promise.all([
-        getUserSubscriptions(user.id),
-        getUserInvoices(user.id),
-      ])
-      setUserSubscriptions(
-        (subs || []).map((s: Record<string, unknown>) => ({
-          id: String(s.id),
-          userId: String(s.user_id),
-          productId: String(s.product_id),
-          planType: (s.plan_type as 'monthly' | 'quarterly' | 'annual') || 'monthly',
-          status: (s.status as 'active' | 'cancelled' | 'expired' | 'paused') || 'active',
-          startDate: new Date(String(s.start_date)),
-          renewalDate: new Date(String(s.end_date || s.start_date)),
-          autoRenew: Boolean(s.auto_renew),
-          price: Number(s.price) || 0,
-          nextBillingDate: new Date(String(s.end_date || s.start_date)),
-          createdAt: new Date(String(s.created_at)),
-          updatedAt: new Date(String(s.updated_at)),
-        })),
-      )
-      setUserInvoices(
-        (invoices || []).map((inv: Record<string, unknown>) => ({
-          id: String(inv.id),
-          userId: String(inv.user_id),
-          subscriptionId: String(inv.subscription_id || ''),
-          amount: Number(inv.total_amount) || 0,
-          taxAmount: Number(inv.tax_amount) || 0,
-          totalAmount: Number(inv.final_amount) || 0,
-          status:
-            inv.status === 'completed'
-              ? 'paid'
-              : (inv.status as 'pending' | 'paid' | 'failed' | 'refunded') || 'pending',
-          paymentMethod: (inv.payment_method as 'payos' | 'credit_card' | 'wallet') || 'payos',
-          invoiceDate: new Date(String(inv.created_at)),
-          dueDate: new Date(String(inv.created_at)),
-          createdAt: new Date(String(inv.created_at)),
-          updatedAt: new Date(String(inv.updated_at)),
-        })),
-      )
-    }
+    const data = await loadUserData(user.id)
+    setUserSubscriptions(data.subscriptions)
+    setUserInvoices(data.invoices)
+    setPurchasedAccounts(data.purchasedAccounts)
 
     router.push('/')
   }
@@ -83,172 +53,143 @@ export default function LoginPage() {
     setError('')
 
     try {
-      const { user, source } = await authenticateUser(email, password)
-      if (user && source) {
-        await completeLogin(user, source)
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ email, password }),
+      })
+      const data = await res.json()
+      if (res.ok && data.user) {
+        await completeLogin({
+          id: data.user.id,
+          email: data.user.email,
+          password: '',
+          fullName: data.user.fullName,
+          role: data.user.role,
+          language: data.user.language ?? 'vi',
+          avatar: data.user.avatar,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
       } else {
-        setError(language === 'vi' ? 'Email hoặc mật khẩu không hợp lệ' : 'Invalid email or password')
+        setError(data.error || t('auth.invalidLogin', language))
       }
-    } catch (err) {
-      setError(language === 'vi' ? 'Lỗi đăng nhập' : 'Login error')
-      console.error('[auth] Login error:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleQuickDemo = async (demoEmail: string) => {
-    setLoading(true)
-    try {
-      const { user, source } = await authenticateUser(demoEmail, 'demo123')
-      if (user && source) await completeLogin(user, source)
+    } catch {
+      setError(t('auth.loginError', language))
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-netflix-black via-netflix-dark to-netflix-black px-4">
-      {/* Background Elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-netflix-red/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
-      </div>
+    <div className="relative min-h-screen overflow-hidden">
+      <Image src="/images/login-bg.jpg" alt="" fill priority className="object-cover" sizes="100vw" />
+      <div className="absolute inset-0 bg-gradient-to-br from-black/85 via-netflix-black/90 to-red-950/80" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(229,9,20,0.25),transparent_55%)]" />
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="relative w-full max-w-md"
-      >
-        <div className="glass-dark rounded-2xl p-8 border border-white/10">
-          {/* Logo */}
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-netflix-red mb-2">N</h1>
-            <h2 className="text-2xl font-bold text-white">NetflixHub</h2>
-            <p className="text-gray-400 text-sm mt-2">{t('nav.signIn', language)}</p>
+      <div className="relative z-10 min-h-screen grid lg:grid-cols-2">
+        <motion.div
+          initial={{ opacity: 0, x: -24 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="hidden lg:flex flex-col justify-center px-12 xl:px-20 py-16"
+        >
+          <div className="mb-8">
+            <BrandLogo size="lg" />
           </div>
+          <h1 className="text-4xl xl:text-5xl font-black text-white leading-tight mb-4">
+            <span className="text-gradient">{t('auth.loginBrand', language)}</span>{' '}
+            {t('auth.loginBrand2', language)}
+          </h1>
+          <p className="text-gray-300 text-lg max-w-md">{t('auth.loginDesc', language)}</p>
+          <div className="flex items-center gap-2 mt-10 text-gray-400 text-sm">
+            <Sparkles size={16} className="text-netflix-red" />
+            <span>{t('auth.loginTagline', language)}</span>
+          </div>
+        </motion.div>
 
-          {/* Error Message */}
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-4 p-3 bg-red-500/20 border border-red-500/50 text-red-400 rounded-lg text-sm"
-            >
-              {error}
-            </motion.div>
-          )}
-
-          {/* Login Form */}
-          <form onSubmit={handleLogin} className="space-y-4 mb-6">
-            {/* Email */}
-            <div>
-              <label className="block text-white text-sm font-medium mb-2">Email</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-3 text-gray-400" size={18} />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="john@example.com"
-                  className="w-full bg-black/30 border border-white/10 text-white pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:border-netflix-red transition-colors"
-                  required
-                />
-              </div>
+        <div className="flex items-center justify-center px-4 py-12 lg:px-12">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="w-full max-w-md"
+          >
+            <div className="lg:hidden flex justify-center mb-8">
+              <BrandLogo size="lg" />
             </div>
 
-            {/* Password */}
-            <div>
-              <label className="block text-white text-sm font-medium mb-2">Password</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-3 text-gray-400" size={18} />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full bg-black/30 border border-white/10 text-white pl-10 pr-10 py-2 rounded-lg focus:outline-none focus:border-netflix-red transition-colors"
-                  required
-                />
+            <div className="rounded-2xl p-8 border border-white/15 bg-black/50 backdrop-blur-xl">
+              <div className="mb-8">
+                <h2 className="text-2xl font-bold text-white">{t('nav.signIn', language)}</h2>
+                <p className="text-gray-400 text-sm mt-1">{t('auth.welcomeBack', language)}</p>
+              </div>
+
+              {error && (
+                <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 text-red-300 rounded-lg text-sm">
+                  {error}
+                </div>
+              )}
+
+              <form onSubmit={handleLogin} className="space-y-5">
+                <div>
+                  <label className="block text-white text-sm font-medium mb-2">{t('auth.email', language)}</label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 text-gray-500" size={18} />
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 text-white pl-10 py-3 rounded-xl focus:border-netflix-red focus:outline-none"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-white text-sm font-medium">{t('auth.password', language)}</label>
+                    <Link href="/auth/forgot-password" className="text-netflix-red text-xs hover:underline">
+                      {t('auth.forgotPassword', language)}
+                    </Link>
+                  </div>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 text-gray-500" size={18} />
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 text-white pl-10 pr-10 py-3 rounded-xl focus:border-netflix-red focus:outline-none"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-3 text-gray-500 hover:text-white"
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
+
                 <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-3 text-gray-400 hover:text-white"
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-netflix-red hover:bg-red-600 text-white font-bold py-3 rounded-xl disabled:opacity-50"
                 >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  {loading ? t('auth.signingIn', language) : t('nav.signIn', language)}
                 </button>
-              </div>
+              </form>
+
+              <p className="text-center text-gray-400 text-sm mt-8">
+                {t('auth.noAccount', language)}{' '}
+                <Link href="/auth/signup" className="text-netflix-red font-semibold">
+                  {t('nav.signUp', language)}
+                </Link>
+              </p>
             </div>
-
-            {/* Remember Me */}
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="remember"
-                className="w-4 h-4 bg-black/30 border border-white/10 rounded cursor-pointer"
-              />
-              <label htmlFor="remember" className="ml-2 text-gray-400 text-sm cursor-pointer">
-                Remember me
-              </label>
-            </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full btn-netflix bg-netflix-red hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 disabled:opacity-50"
-            >
-              {loading ? 'Signing in...' : t('nav.signIn', language)}
-            </button>
-          </form>
-
-          {/* Demo Users */}
-          <div className="mb-6">
-            <p className="text-center text-gray-400 text-sm mb-3">{language === 'vi' ? 'Tài khoản Demo' : 'Demo Accounts'}</p>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                onClick={() => handleQuickDemo('customer1@example.com')}
-                className="text-xs bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 py-2 px-2 rounded border border-blue-500/30 transition-all"
-              >
-                {language === 'vi' ? 'Khách hàng' : 'Customer'}
-              </button>
-              <button
-                onClick={() => handleQuickDemo('merchant1@example.com')}
-                className="text-xs bg-green-500/20 hover:bg-green-500/30 text-green-300 py-2 px-2 rounded border border-green-500/30 transition-all"
-              >
-                {language === 'vi' ? 'Nhà bán' : 'Merchant'}
-              </button>
-              <button
-                onClick={() => handleQuickDemo('admin@example.com')}
-                className="text-xs bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 py-2 px-2 rounded border border-purple-500/30 transition-all"
-              >
-                {language === 'vi' ? 'Quản trị' : 'Admin'}
-              </button>
-            </div>
-          </div>
-
-          {/* Divider */}
-          <div className="flex items-center gap-4 mb-6">
-            <div className="flex-1 h-px bg-white/10" />
-            <span className="text-gray-400 text-xs">OR</span>
-            <div className="flex-1 h-px bg-white/10" />
-          </div>
-
-          {/* Sign Up Link */}
-          <p className="text-center text-gray-400 text-sm">
-            {t('common.noResults', language) === 'common.noResults' ? "Don't have an account? " : 'Don\'t have an account? '}
-            <Link href="/auth/signup" className="text-netflix-red hover:text-red-500 transition-colors font-semibold">
-              {t('nav.signUp', language)}
-            </Link>
-          </p>
+          </motion.div>
         </div>
-
-        {/* Footer Note */}
-        <p className="text-center text-gray-600 text-xs mt-6">
-          {language === 'vi' ? 'Mật khẩu demo: ' : 'Demo password: '}<span className="text-gray-400 font-mono">demo123</span>
-        </p>
-      </motion.div>
+      </div>
     </div>
   )
 }

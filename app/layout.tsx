@@ -14,34 +14,13 @@ export const metadata: Metadata = {
   keywords: ['streaming', 'subscription', 'SaaS', 'premium', 'content'],
   authors: [{ name: 'NetflixHub' }],
   icons: {
-    icon: [
-      {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
-      },
-    ],
-    apple: '/apple-icon.png',
+    icon: [{ url: '/icon.svg', type: 'image/svg+xml' }],
+    apple: [{ url: '/icon.svg', type: 'image/svg+xml' }],
   },
   openGraph: {
     title: 'NetflixHub - Premium Subscription SaaS',
     description: 'The ultimate streaming subscription marketplace',
-    url: 'https://netflixhub.app',
     siteName: 'NetflixHub',
-    images: [
-      {
-        url: '/og-image.png',
-        width: 1200,
-        height: 630,
-      },
-    ],
     type: 'website',
   },
 }
@@ -60,7 +39,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${geist.variable} ${geistMono.variable}`}>
+    <html lang="vi" className={`${geist.variable} ${geistMono.variable}`}>
       <head>
         <meta charSet="utf-8" />
       </head>

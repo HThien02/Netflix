@@ -19,9 +19,9 @@ export default function SubscriptionsPage() {
     return (
       <AppLayout>
         <div className="container mx-auto px-4 py-20 text-center">
-          <p className="text-white mb-4">Please sign in to view your subscriptions</p>
+          <p className="text-white mb-4">{t('subscriptions.signIn', language)}</p>
           <Link href="/auth/login" className="bg-netflix-red hover:bg-red-700 text-white px-6 py-2 rounded-lg">
-            Sign In
+            {t('common.signIn', language)}
           </Link>
         </div>
       </AppLayout>
@@ -76,15 +76,15 @@ export default function SubscriptionsPage() {
             className="mb-12"
           >
             <h1 className="text-4xl font-bold text-white mb-2">{t('subscriptions.title', language)}</h1>
-            <p className="text-gray-400">Manage and view all your active subscriptions</p>
+            <p className="text-gray-400">{t('subscriptions.manageDesc', language)}</p>
           </motion.div>
 
           {/* Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
             {[
-              { label: 'Active Subscriptions', value: stats.active, color: 'green' },
-              { label: 'Total Subscriptions', value: stats.total, color: 'blue' },
-              { label: 'Monthly Renewal', value: formatCurrency(stats.renewal), color: 'purple' },
+              { label: t('subscriptions.activeCount', language), value: stats.active, color: 'green' },
+              { label: t('subscriptions.totalCount', language), value: stats.total, color: 'blue' },
+              { label: t('subscriptions.monthlyRenewal', language), value: formatCurrency(stats.renewal), color: 'purple' },
             ].map((stat, index) => (
               <motion.div
                 key={index}
@@ -117,7 +117,7 @@ export default function SubscriptionsPage() {
                     : 'bg-white/10 text-gray-300 hover:bg-white/20'
                 }`}
               >
-                {status === 'all' && 'All'}
+                {status === 'all' && t('subscriptions.all', language)}
                 {status === 'active' && t('subscriptions.active', language)}
                 {status === 'cancelled' && t('subscriptions.cancelled', language)}
                 {status === 'expired' && t('subscriptions.expired', language)}
@@ -161,21 +161,21 @@ export default function SubscriptionsPage() {
                         <div className="flex items-center gap-2">
                           <Calendar size={16} className="text-gray-400" />
                           <div>
-                            <p className="text-gray-400 text-xs">Started</p>
+                            <p className="text-gray-400 text-xs">{t('subscriptions.started', language)}</p>
                             <p className="text-white font-semibold text-sm">{formatDate(subscription.startDate)}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <RotateCcw size={16} className={subscription.autoRenew ? 'text-green-400' : 'text-gray-600'} />
                           <p className="text-gray-400 text-xs">
-                            {subscription.autoRenew ? 'Auto-renews' : 'Manual renewal'}
+                            {subscription.autoRenew ? t('subscriptions.autoRenews', language) : t('subscriptions.manualRenew', language)}
                           </p>
                         </div>
                       </div>
 
                       {/* Price & Renewal */}
                       <div>
-                        <p className="text-gray-400 text-xs mb-1">Price</p>
+                        <p className="text-gray-400 text-xs mb-1">{t('subscriptions.price', language)}</p>
                         <p className="text-white font-bold text-lg mb-3">{formatCurrency(subscription.price)}</p>
                         <p className="text-gray-400 text-xs">
                           {subscription.status === 'active' && `Renews ${formatDate(subscription.renewalDate)}`}

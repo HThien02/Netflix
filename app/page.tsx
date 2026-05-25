@@ -2,11 +2,14 @@
 
 import React from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { AppLayout } from '@/components/app-layout'
 import { useApp } from '@/lib/context'
 import { t } from '@/lib/translations'
 import { motion } from 'framer-motion'
 import { ArrowRight, Play, Zap, Users, BarChart3 } from 'lucide-react'
+import { NetflixIntroVideo } from '@/components/netflix-intro-video'
+import { formatCurrency } from '@/lib/utils/format'
 
 export default function Home() {
   const { language, isAuthenticated } = useApp()
@@ -18,31 +21,26 @@ export default function Home() {
   }
 
   const features = [
-    {
-      icon: Zap,
-      title: 'Lightning Fast',
-      description: 'Instant access to premium content with zero buffering',
-    },
-    {
-      icon: Users,
-      title: 'Multi-Profile',
-      description: 'Create profiles for entire family with parental controls',
-    },
-    {
-      icon: BarChart3,
-      title: 'Smart Analytics',
-      description: 'Track your usage and get personalized recommendations',
-    },
+    { icon: Zap, title: t('home.feature1Title', language), description: t('home.feature1Desc', language) },
+    { icon: Users, title: t('home.feature2Title', language), description: t('home.feature2Desc', language) },
+    { icon: BarChart3, title: t('home.feature3Title', language), description: t('home.feature3Desc', language) },
   ]
 
   return (
     <AppLayout>
       {/* Hero Section */}
       <section className="relative h-screen flex items-center justify-center bg-gradient-to-br from-netflix-black via-netflix-dark-light to-netflix-black overflow-hidden">
-        {/* Animated Background */}
+        {/* Theme background */}
         <div className="absolute inset-0">
-          <div className="absolute top-0 left-0 w-1/2 h-1/2 bg-gradient-to-br from-netflix-red/20 to-transparent rounded-full blur-3xl" />
-          <div className="absolute bottom-0 right-0 w-1/2 h-1/2 bg-gradient-to-tl from-blue-500/20 to-transparent rounded-full blur-3xl" />
+          <Image
+            src="/images/maintheme.png"
+            alt=""
+            fill
+            priority
+            className="object-cover"
+            sizes="100vw"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-netflix-black/90" />
         </div>
 
         {/* Content */}
@@ -60,8 +58,8 @@ export default function Home() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2, duration: 0.8 }}
               >
-                <span className="text-gradient">Unlimited</span>
-                {' '}Entertainment
+                <span className="text-gradient">{t('hero.unlimited', language)}</span>
+                {' '}{t('hero.entertainment', language)}
               </motion.h1>
 
               <motion.p
@@ -81,7 +79,7 @@ export default function Home() {
               >
                 <Link
                   href="/marketplace"
-                  className="bg-netflix-red hover:bg-red-700 text-white font-bold py-4 px-8 rounded-lg transition-all duration-300 flex items-center justify-center gap-2 group"
+                  className="btn-primary-red py-4 px-8 flex items-center justify-center gap-2 group"
                 >
                   <Play size={24} />
                   {t('hero.cta', language)}
@@ -106,12 +104,12 @@ export default function Home() {
               >
                 <div>
                   <p className="text-white font-bold text-2xl">2.5M+</p>
-                  <p className="text-sm">Active Subscribers</p>
+                  <p className="text-sm">{t('hero.subscribers', language)}</p>
                 </div>
                 <div className="w-px h-12 bg-gray-600" />
                 <div>
                   <p className="text-white font-bold text-2xl">50K+</p>
-                  <p className="text-sm">Premium Content</p>
+                  <p className="text-sm">{t('hero.content', language)}</p>
                 </div>
               </motion.div>
             </motion.div>
@@ -126,26 +124,26 @@ export default function Home() {
               <div className="relative">
                 {/* Main Card */}
                 <motion.div
-                  className="glass-dark rounded-3xl p-8 border border-white/10 shadow-2xl shadow-netflix-red/20"
+                  className="glass-dark-red-edge rounded-3xl p-8"
                   animate={{ y: [0, 20, 0] }}
                   transition={{ duration: 4, repeat: Infinity }}
                 >
                   <div className="space-y-6">
-                    <div className="h-48 bg-gradient-to-br from-netflix-red to-red-900 rounded-2xl shadow-lg" />
+                    <NetflixIntroVideo className="h-48 w-full" withSound />
                     <div>
-                      <h3 className="text-white font-bold text-lg">Premium Plus</h3>
-                      <p className="text-gray-400 text-sm">4K • 4 Screens • Offline</p>
+                      <h3 className="text-white font-bold text-lg">{t('hero.premiumPlus', language)}</h3>
+                      <p className="text-gray-400 text-sm">{t('hero.premiumDesc', language)}</p>
                     </div>
                     <div className="flex items-baseline gap-2">
-                      <span className="text-3xl font-bold text-white">$19.99</span>
-                      <span className="text-gray-400">/month</span>
+                      <span className="text-3xl font-bold text-white">{formatCurrency(10_000)}</span>
+                      <span className="text-gray-400">{t('hero.perMonth', language)}</span>
                     </div>
                   </div>
                 </motion.div>
 
                 {/* Floating Cards */}
                 <motion.div
-                  className="absolute -top-8 -right-8 glass-dark rounded-2xl p-6 border border-white/10 w-64 shadow-lg"
+                  className="absolute -top-8 -right-8 glass-dark-red-edge-soft rounded-2xl p-6 w-64"
                   animate={{ y: [0, -10, 0] }}
                   transition={{ duration: 3, repeat: Infinity, delay: 0.5 }}
                 >
@@ -154,14 +152,14 @@ export default function Home() {
                       <Zap className="text-green-400" size={24} />
                     </div>
                     <div>
-                      <p className="text-white font-semibold text-sm">HD Quality</p>
-                      <p className="text-gray-400 text-xs">Always smooth</p>
+                      <p className="text-white font-semibold text-sm">{t('hero.hdQuality', language)}</p>
+                      <p className="text-gray-400 text-xs">{t('hero.hdDesc', language)}</p>
                     </div>
                   </div>
                 </motion.div>
 
                 <motion.div
-                  className="absolute -bottom-8 -left-8 glass-dark rounded-2xl p-6 border border-white/10 w-64 shadow-lg"
+                  className="absolute -bottom-8 -left-8 glass-dark-red-edge-soft rounded-2xl p-6 w-64"
                   animate={{ y: [0, 10, 0] }}
                   transition={{ duration: 3.5, repeat: Infinity, delay: 1 }}
                 >
@@ -170,8 +168,8 @@ export default function Home() {
                       <Users className="text-blue-400" size={24} />
                     </div>
                     <div>
-                      <p className="text-white font-semibold text-sm">Multi-Profile</p>
-                      <p className="text-gray-400 text-xs">For everyone</p>
+                      <p className="text-white font-semibold text-sm">{t('hero.multiProfile', language)}</p>
+                      <p className="text-gray-400 text-xs">{t('hero.multiDesc', language)}</p>
                     </div>
                   </div>
                 </motion.div>
@@ -189,9 +187,9 @@ export default function Home() {
             {...fadeInUp}
           >
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-              Why Choose <span className="text-netflix-red">NetflixHub</span>?
+              {t('home.whyTitle', language)} <span className="text-netflix-red">NetflixHub</span>?
             </h2>
-            <p className="text-gray-400 text-lg">Experience premium entertainment like never before</p>
+            <p className="text-gray-400 text-lg">{t('home.whySubtitle', language)}</p>
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -223,16 +221,16 @@ export default function Home() {
             {...fadeInUp}
           >
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-              Ready to Get Started?
+              {t('home.ctaTitle', language)}
             </h2>
             <p className="text-gray-400 text-lg mb-8 max-w-2xl mx-auto">
-              Join millions of users enjoying premium streaming content with flexible subscription plans.
+              {t('home.ctaSubtitle', language)}
             </p>
             <Link
               href="/marketplace"
-              className="inline-block bg-netflix-red hover:bg-red-700 text-white font-bold py-4 px-10 rounded-lg transition-all duration-300 shadow-lg shadow-netflix-red/50"
+              className="inline-block btn-primary-red py-4 px-10"
             >
-              Explore All Plans
+              {t('home.ctaButton', language)}
             </Link>
           </motion.div>
         </div>

@@ -6,14 +6,19 @@ import Link from 'next/link'
 import { AppLayout } from '@/components/app-layout'
 import { useApp } from '@/lib/context'
 import { t } from '@/lib/translations'
-import { mockProducts, mockCoupons } from '@/lib/mock-data'
+import { mockCoupons } from '@/lib/mock-data'
+import { useProducts } from '@/lib/hooks/use-products'
+import { getLocalizedProduct, getLocalizedProductName } from '@/lib/products-i18n'
 import { formatCurrency } from '@/lib/utils/format'
+import { planLabel } from '@/lib/plans'
+import type { PlanType } from '@/lib/plans'
 import { motion } from 'framer-motion'
 import { Trash2, Plus, Minus, ArrowLeft, CheckCircle } from 'lucide-react'
 
 export default function CartPage() {
   const router = useRouter()
   const { cart, setCart, isAuthenticated, language } = useApp()
+  const { getById } = useProducts()
   const [couponCode, setCouponCode] = useState('')
   const [couponError, setCouponError] = useState('')
   const [couponApplied, setCouponApplied] = useState(false)
@@ -22,9 +27,9 @@ export default function CartPage() {
     return (
       <AppLayout>
         <div className="container mx-auto px-4 py-20 text-center">
-          <p className="text-white mb-4">Please sign in to view your cart</p>
-          <Link href="/auth/login" className="bg-netflix-red hover:bg-red-700 text-white px-6 py-2 rounded-lg">
-            Sign In
+          <p className="text-white mb-4">{t('cart.signIn', language)}</p>
+          <Link href="/auth/login" className="btn-primary-red px-6 py-2 inline-block">
+            {t('nav.signIn', language)}
           </Link>
         </div>
       </AppLayout>
@@ -80,12 +85,14 @@ export default function CartPage() {
     const coupon = mockCoupons.find(c => c.code === couponCode.toUpperCase() && c.active)
     
     if (!coupon) {
-      setCouponError('Invalid coupon code')
+      setCouponError(t('cart.invalidCoupon', language))
       return
     }
 
     if (coupon.minAmount && cart.subtotal < coupon.minAmount) {
-      setCouponError(`Minimum purchase of $${coupon.minAmount} required`)
+      setCouponError(
+        `${t('cart.couponMinAmount', language)} ${formatCurrency(coupon.minAmount!)}`,
+      )
       return
     }
 
@@ -131,7 +138,7 @@ export default function CartPage() {
             <div className="lg:col-span-2">
               <div className="space-y-4">
                 {cart.items.map((item, index) => {
-                  const product = mockProducts.find(p => p.id === item.productId)
+                  const product = getById(item.productId)
                   if (!product) return null
 
                   return (
@@ -153,8 +160,16 @@ export default function CartPage() {
 
                       {/* Product Info */}
                       <div className="flex-1">
-                        <h3 className="text-white font-bold text-lg mb-1">{product.name}</h3>
-                        <p className="text-gray-400 text-sm mb-2">{product.description}</p>
+                        <h3 className="text-white font-bold text-lg mb-1">
+                          {getLocalizedProductName(product.id, product.name, language)}
+                        </h3>
+                        <p className="text-gray-400 text-sm mb-2 line-clamp-2">
+                          {getLocalizedProduct(product, language).description}
+                        </p>
+                        <p className="text-gray-500 text-xs mb-1">
+                          {item.slots || 1} {t('marketplace.slots', language)} ·{' '}
+                          {planLabel(item.planType as PlanType, language)}
+                        </p>
                         <div className="text-white font-semibold">{formatCurrency(item.price)}</div>
                       </div>
 

@@ -218,16 +218,16 @@ INSERT INTO public.users (id, email, password_hash, role, full_name, phone, lang
 ON CONFLICT (email) DO NOTHING;
 
 INSERT INTO public.products (id, name, description, price, duration_months, max_screens, quality, category, rating, reviews_count) VALUES
-  ('660e8400-e29b-41d4-a716-446655440001', 'Netflix Basic', '480p, 1 screen', 6.99, 1, 1, '480p', 'Streaming', 4.2, 1200),
-  ('660e8400-e29b-41d4-a716-446655440002', 'Netflix Standard', '1080p, 2 screens', 15.49, 1, 2, '1080p', 'Streaming', 4.5, 2400),
-  ('660e8400-e29b-41d4-a716-446655440003', 'Netflix Premium', '4K HDR, 4 screens', 22.99, 1, 4, '4K', 'Streaming', 4.7, 3100),
-  ('660e8400-e29b-41d4-a716-446655440004', 'Amazon Prime Video', 'Movies, series & shipping perks', 14.99, 1, 3, '1080p', 'Streaming', 4.4, 890),
-  ('660e8400-e29b-41d4-a716-446655440005', 'Disney+', 'Marvel, Star Wars, Pixar', 10.99, 1, 4, '4K', 'Streaming', 4.6, 1500),
-  ('660e8400-e29b-41d4-a716-446655440006', 'HBO Max', 'Premium HBO originals', 19.99, 1, 3, '4K', 'Streaming', 4.5, 980),
-  ('660e8400-e29b-41d4-a716-446655440007', 'Spotify Premium', 'Ad-free music', 9.99, 1, 1, 'High', 'Music', 4.8, 5200),
-  ('660e8400-e29b-41d4-a716-446655440008', 'YouTube Premium', 'No ads + background play', 13.99, 1, 1, '1080p', 'Music', 4.3, 2100),
-  ('660e8400-e29b-41d4-a716-446655440009', 'Hulu', 'TV shows & movies', 7.99, 1, 2, '1080p', 'Streaming', 4.1, 760),
-  ('660e8400-e29b-41d4-a716-446655440010', 'Paramount+', 'CBS, Nickelodeon & more', 11.99, 1, 3, '1080p', 'Streaming', 4.0, 540)
+  ('660e8400-e29b-41d4-a716-446655440001', 'Netflix Basic', '480p, 1 screen', 1000, 1, 1, '480p', 'Streaming', 4.2, 1200),
+  ('660e8400-e29b-41d4-a716-446655440002', 'Netflix Standard', '1080p, 2 screens', 1000, 1, 2, '1080p', 'Streaming', 4.5, 2400),
+  ('660e8400-e29b-41d4-a716-446655440003', 'Netflix Premium', '4K HDR, 4 screens', 1000, 1, 4, '4K', 'Streaming', 4.7, 3100),
+  ('660e8400-e29b-41d4-a716-446655440004', 'Amazon Prime Video', 'Movies, series & shipping perks', 1000, 1, 3, '1080p', 'Streaming', 4.4, 890),
+  ('660e8400-e29b-41d4-a716-446655440005', 'Disney+', 'Marvel, Star Wars, Pixar', 1000, 1, 4, '4K', 'Streaming', 4.6, 1500),
+  ('660e8400-e29b-41d4-a716-446655440006', 'HBO Max', 'Premium HBO originals', 1000, 1, 3, '4K', 'Streaming', 4.5, 980),
+  ('660e8400-e29b-41d4-a716-446655440007', 'Spotify Premium', 'Ad-free music', 1000, 1, 1, 'High', 'Music', 4.8, 5200),
+  ('660e8400-e29b-41d4-a716-446655440008', 'YouTube Premium', 'No ads + background play', 1000, 1, 1, '1080p', 'Music', 4.3, 2100),
+  ('660e8400-e29b-41d4-a716-446655440009', 'Hulu', 'TV shows & movies', 1000, 1, 2, '1080p', 'Streaming', 4.1, 760),
+  ('660e8400-e29b-41d4-a716-446655440010', 'Paramount+', 'CBS, Nickelodeon & more', 1000, 1, 3, '1080p', 'Streaming', 4.0, 540)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO public.merchant_stores (id, user_id, store_name, description, verification_status, total_sales, rating, followers_count) VALUES
@@ -255,10 +255,10 @@ INSERT INTO public.coupons (id, code, description, discount_percent, max_uses, c
 ON CONFLICT (code) DO NOTHING;
 
 INSERT INTO public.subscriptions (id, user_id, product_id, status, plan_type, price, start_date, end_date, auto_renew) VALUES
-  ('bb0e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440001', '660e8400-e29b-41d4-a716-446655440003', 'active', 'monthly', 22.99, NOW() - INTERVAL '15 days', NOW() + INTERVAL '15 days', true),
-  ('bb0e8400-e29b-41d4-a716-446655440002', '550e8400-e29b-41d4-a716-446655440002', '660e8400-e29b-41d4-a716-446655440007', 'active', 'monthly', 9.99, NOW() - INTERVAL '5 days', NOW() + INTERVAL '25 days', true),
-  ('bb0e8400-e29b-41d4-a716-446655440003', '550e8400-e29b-41d4-a716-446655440001', '660e8400-e29b-41d4-a716-446655440005', 'cancelled', 'annual', 10.99, NOW() - INTERVAL '90 days', NOW() - INTERVAL '5 days', false),
-  ('bb0e8400-e29b-41d4-a716-446655440004', '550e8400-e29b-41d4-a716-446655440003', '660e8400-e29b-41d4-a716-446655440002', 'active', 'quarterly', 15.49, NOW() - INTERVAL '30 days', NOW() + INTERVAL '60 days', true)
+  ('bb0e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440001', '660e8400-e29b-41d4-a716-446655440003', 'active', 'monthly', 1000, NOW() - INTERVAL '15 days', NOW() + INTERVAL '15 days', true),
+  ('bb0e8400-e29b-41d4-a716-446655440002', '550e8400-e29b-41d4-a716-446655440002', '660e8400-e29b-41d4-a716-446655440007', 'active', 'monthly', 1000, NOW() - INTERVAL '5 days', NOW() + INTERVAL '25 days', true),
+  ('bb0e8400-e29b-41d4-a716-446655440003', '550e8400-e29b-41d4-a716-446655440001', '660e8400-e29b-41d4-a716-446655440005', 'cancelled', 'annual', 1000, NOW() - INTERVAL '90 days', NOW() - INTERVAL '5 days', false),
+  ('bb0e8400-e29b-41d4-a716-446655440004', '550e8400-e29b-41d4-a716-446655440003', '660e8400-e29b-41d4-a716-446655440002', 'active', 'quarterly', 1000, NOW() - INTERVAL '30 days', NOW() + INTERVAL '60 days', true)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO public.invoices (id, user_id, subscription_id, total_amount, tax_amount, discount_amount, final_amount, status, payment_method, invoice_number) VALUES

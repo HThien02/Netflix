@@ -1,3 +1,6 @@
+import type { PlanType } from '@/lib/plans'
+export type { PlanType }
+
 // User Types
 export interface User {
   id: string
@@ -29,6 +32,8 @@ export interface Product {
   merchantId: string
   name: string
   description: string
+  nameEn?: string
+  descriptionEn?: string
   image: string
   category: string
   basePrice: number
@@ -43,7 +48,7 @@ export interface Subscription {
   id: string
   userId: string
   productId: string
-  planType: 'monthly' | 'quarterly' | 'annual'
+  planType: PlanType
   status: 'active' | 'cancelled' | 'expired' | 'paused'
   startDate: Date
   renewalDate: Date
@@ -53,6 +58,7 @@ export interface Subscription {
   nextBillingDate: Date
   createdAt: Date
   updatedAt: Date
+  productName?: string
 }
 
 // Invoice Types
@@ -68,9 +74,32 @@ export interface Invoice {
   invoiceDate: Date
   dueDate: Date
   paidDate?: Date
+  invoiceNumber?: string
+  items?: Array<{ productName: string; planType: string; price: number }>
   notes?: string
   createdAt: Date
   updatedAt: Date
+}
+
+// Purchased account credentials (delivered after payment)
+export interface PurchasedAccount {
+  id: string
+  userId: string
+  invoiceId?: string
+  subscriptionId?: string
+  productId?: string
+  productName: string
+  planType: PlanType
+  serviceEmail: string
+  servicePassword: string
+  profileName?: string
+  extraNotes?: string
+  slotsCount?: number
+  poolAccountId?: string
+  slotAssignments?: Array<{ slot_number: number; profile_name: string; pin?: string }>
+  expiresAt: Date
+  status: 'active' | 'expired' | 'revoked'
+  createdAt: Date
 }
 
 // Inventory Types
@@ -173,8 +202,11 @@ export interface CartItem {
   id: string
   productId: string
   quantity: number
-  planType: 'monthly' | 'quarterly' | 'annual'
+  planType: PlanType
+  /** Số slot/profile (1–4) — giá = base × slots; gói ngắn hạn luôn = 1 */
+  slots: number
   price: number
+  productName?: string
 }
 
 export interface Cart {

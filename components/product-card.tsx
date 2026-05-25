@@ -1,39 +1,37 @@
 'use client'
 
-import React from 'react'
+import Link from 'next/link'
 import { Product } from '@/lib/types'
+import { getLocalizedProduct } from '@/lib/products-i18n'
 import { formatCurrency, calculateDiscount } from '@/lib/utils/format'
+import { calcPriceBySlots } from '@/lib/inventory/pool'
+import { t, type Lang } from '@/lib/translations'
 import { motion } from 'framer-motion'
-import { ShoppingCart, Star } from 'lucide-react'
+import { Star, ChevronRight } from 'lucide-react'
 
 interface ProductCardProps {
   product: Product
-  onAddToCart: (product: Product) => void
-  planType?: 'monthly' | 'quarterly' | 'annual'
+  language?: Lang
 }
 
-export function ProductCard({ product, onAddToCart, planType = 'monthly' }: ProductCardProps) {
-  const discountedPrice = product.discountPercentage
+export function ProductCard({ product, language = 'vi' }: ProductCardProps) {
+  const localized = getLocalizedProduct(product, language)
+  const base = product.discountPercentage
     ? calculateDiscount(product.basePrice, product.discountPercentage)
     : product.basePrice
-
-  const planMultipliers = {
-    monthly: 1,
-    quarterly: 2.8,
-    annual: 10,
-  }
-
-  const finalPrice = discountedPrice * planMultipliers[planType]
+  const fromPrice = calcPriceBySlots(base, 1, 'monthly')
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="group h-full"
+      className="h-full"
     >
-      <div className="glass-dark rounded-2xl overflow-hidden border border-white/10 hover:border-netflix-red/50 transition-all duration-300 h-full flex flex-col">
-        {/* Image */}
+      <Link
+        href={`/marketplace/${product.id}`}
+        className="group block h-full glass-dark rounded-2xl overflow-hidden border border-white/10 hover:border-netflix-red/50 transition-all duration-300"
+      >
         <div className="relative h-48 overflow-hidden bg-gradient-to-br from-netflix-dark to-black">
           <img
             src={product.image}
@@ -47,24 +45,17 @@ export function ProductCard({ product, onAddToCart, planType = 'monthly' }: Prod
           )}
         </div>
 
-        {/* Content */}
-        <div className="p-5 flex-1 flex flex-col">
-          {/* Category */}
+        <div className="p-5 flex flex-col h-[calc(100%-12rem)]">
           <span className="text-xs text-netflix-red font-semibold uppercase tracking-wider mb-2">
-            {product.category}
+            {localized.category}
           </span>
 
-          {/* Title */}
           <h3 className="text-white font-bold text-lg mb-2 group-hover:text-netflix-red transition-colors line-clamp-2">
-            {product.name}
+            {localized.name}
           </h3>
 
-          {/* Description */}
-          <p className="text-gray-400 text-sm mb-4 line-clamp-2 flex-1">
-            {product.description}
-          </p>
+          <p className="text-gray-400 text-sm mb-4 line-clamp-2 flex-1">{localized.description}</p>
 
-          {/* Rating */}
           <div className="flex items-center gap-1 mb-4">
             {Array.from({ length: 5 }).map((_, i) => (
               <Star
@@ -76,35 +67,18 @@ export function ProductCard({ product, onAddToCart, planType = 'monthly' }: Prod
             <span className="text-gray-400 text-xs ml-2">(4.2)</span>
           </div>
 
-          {/* Pricing */}
-          <div className="mb-4">
-            <div className="flex items-baseline gap-2 mb-1">
-              <span className="text-2xl font-bold text-white">
-                {formatCurrency(finalPrice)}
-              </span>
-              {product.discountPercentage && (
-                <span className="text-gray-500 line-through text-sm">
-                  {formatCurrency(product.basePrice * planMultipliers[planType])}
-                </span>
-              )}
+          <div className="flex items-end justify-between gap-2 mt-auto pt-2 border-t border-white/10">
+            <div>
+              <p className="text-xs text-gray-500">{t('productDetail.fromPrice', language)}</p>
+              <span className="text-xl font-bold text-white">{formatCurrency(fromPrice)}</span>
             </div>
-            <p className="text-xs text-gray-400">
-              {planType === 'monthly' && 'per month'}
-              {planType === 'quarterly' && 'per 3 months'}
-              {planType === 'annual' && 'per year'}
-            </p>
+            <span className="flex items-center gap-1 text-netflix-red text-sm font-semibold group-hover:gap-2 transition-all">
+              {t('productDetail.viewDetail', language)}
+              <ChevronRight size={18} />
+            </span>
           </div>
-
-          {/* Add to Cart Button */}
-          <button
-            onClick={() => onAddToCart(product)}
-            className="w-full bg-netflix-red hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 flex items-center justify-center gap-2 group/btn"
-          >
-            <ShoppingCart size={18} />
-            <span>Add to Cart</span>
-          </button>
         </div>
-      </div>
+      </Link>
     </motion.div>
   )
 }

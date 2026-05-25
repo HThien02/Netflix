@@ -2,16 +2,17 @@
 
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useRedirectIfAuthenticated } from '@/lib/hooks/use-redirect-if-authenticated'
 import Link from 'next/link'
 import { useApp } from '@/lib/context'
 import { User } from '@/lib/types'
 import { t } from '@/lib/translations'
 import { motion } from 'framer-motion'
 import { Eye, EyeOff, Mail, Lock, User as UserIcon, CheckCircle } from 'lucide-react'
-import { v4 as uuidv4 } from 'uuid'
 
 export default function SignupPage() {
   const router = useRouter()
+  const { shouldShowAuthForm } = useRedirectIfAuthenticated()
   const { setCurrentUser, setIsAuthenticated, language } = useApp()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
@@ -19,25 +20,28 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [userType, setUserType] = useState<'customer' | 'merchant'>('customer')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  if (!shouldShowAuthForm) {
+    return null
+  }
+
   const validateForm = () => {
     if (!fullName.trim()) {
-      setError('Full name is required')
+      setError(t('auth.nameRequired', language))
       return false
     }
     if (!email.includes('@')) {
-      setError('Valid email is required')
+      setError(t('auth.emailRequired', language))
       return false
     }
     if (password.length < 6) {
-      setError('Password must be at least 6 characters')
+      setError(t('auth.passwordMin', language))
       return false
     }
     if (password !== confirmPassword) {
-      setError('Passwords do not match')
+      setError(t('auth.passwordMismatch', language))
       return false
     }
     return true
@@ -46,20 +50,26 @@ export default function SignupPage() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-
     if (!validateForm()) return
-
     setLoading(true)
 
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ email, password, fullName, language }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || t('common.error', language))
+
       const newUser: User = {
-        id: uuidv4(),
-        email,
-        password,
-        fullName,
-        role: userType,
-        language: language,
+        id: data.user.id,
+        email: data.user.email,
+        password: '',
+        fullName: data.user.fullName,
+        role: 'customer',
+        language,
         createdAt: new Date(),
         updatedAt: new Date(),
         avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${fullName}`,
@@ -67,11 +77,13 @@ export default function SignupPage() {
 
       setCurrentUser(newUser)
       setIsAuthenticated(true)
-      localStorage.setItem('currentUser', JSON.stringify(newUser))
-      localStorage.setItem('isAuthenticated', 'true')
+      sessionStorage.setItem('netflix-intro-sound-unlocked', '1')
       router.push('/')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('common.error', language))
+    } finally {
       setLoading(false)
-    }, 1000)
+    }
   }
 
   const passwordStrength = React.useMemo(() => {
@@ -117,27 +129,6 @@ export default function SignupPage() {
             </motion.div>
           )}
 
-          {/* User Type Selection */}
-          <div className="mb-6">
-            <p className="text-white text-sm font-medium mb-3">Account Type</p>
-            <div className="grid grid-cols-2 gap-3">
-              {(['customer', 'merchant'] as const).map((type) => (
-                <button
-                  key={type}
-                  onClick={() => setUserType(type)}
-                  className={`py-2 px-3 rounded-lg border transition-all text-sm font-medium ${
-                    userType === type
-                      ? 'bg-netflix-red/20 border-netflix-red text-netflix-red'
-                      : 'bg-black/30 border-white/10 text-gray-400 hover:border-white/20'
-                  }`}
-                >
-                  {type.charAt(0).toUpperCase() + type.slice(1)}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Signup Form */}
           <form onSubmit={handleSignup} className="space-y-4 mb-6">
             {/* Full Name */}
             <div>
@@ -205,11 +196,11 @@ export default function SignupPage() {
                     ))}
                   </div>
                   <p className="text-xs text-gray-400">
-                    {passwordStrength === 0 && 'Weak'}
-                    {passwordStrength === 1 && 'Fair'}
-                    {passwordStrength === 2 && 'Good'}
-                    {passwordStrength === 3 && 'Strong'}
-                    {passwordStrength === 4 && 'Very Strong'}
+                    {passwordStrength === 0 && t('auth.passwordWeak', language)}
+                    {passwordStrength === 1 && t('auth.passwordFair', language)}
+                    {passwordStrength === 2 && t('auth.passwordGood', language)}
+                    {passwordStrength === 3 && t('auth.passwordStrong', language)}
+                    {passwordStrength === 4 && t('auth.passwordVeryStrong', language)}
                   </p>
                 </div>
               )}
@@ -263,7 +254,7 @@ export default function SignupPage() {
               disabled={loading}
               className="w-full btn-netflix bg-netflix-red hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 disabled:opacity-50"
             >
-              {loading ? 'Creating account...' : 'Create Account'}
+              {loading ? t('auth.creating', language) : t('auth.createAccount', language)}
             </button>
           </form>
 

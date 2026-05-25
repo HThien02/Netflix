@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import Link from 'next/link'
 import { AppLayout } from '@/components/app-layout'
 import { useApp } from '@/lib/context'
+import { formatCurrency } from '@/lib/utils/format'
 import { motion } from 'framer-motion'
 import { Star, Crown, Zap, Gift, BarChart3, Shield, Clock, CheckCircle } from 'lucide-react'
 
@@ -23,7 +24,7 @@ const VIP_TIERS: VIPTier[] = [
     id: 'silver',
     name: 'Silver',
     icon: <Star size={32} />,
-    price: 4.99,
+    price: 10_000,
     description: 'Essential benefits to get started',
     color: 'from-slate-400 to-gray-600',
     benefits: [
@@ -38,7 +39,7 @@ const VIP_TIERS: VIPTier[] = [
     id: 'gold',
     name: 'Gold',
     icon: <Crown size={32} />,
-    price: 9.99,
+    price: 10_000,
     description: 'Premium features for power users',
     color: 'from-yellow-400 to-orange-500',
     benefits: [
@@ -56,7 +57,7 @@ const VIP_TIERS: VIPTier[] = [
     id: 'platinum',
     name: 'Platinum',
     icon: <Zap size={32} />,
-    price: 19.99,
+    price: 10_000,
     description: 'Exclusive luxury membership',
     color: 'from-purple-400 to-pink-600',
     benefits: [
@@ -151,8 +152,8 @@ export default function VIPPage() {
                 {/* Price */}
                 <div className="mb-6 pb-6 border-b border-white/10">
                   <div className="text-4xl font-bold text-white mb-2">
-                    ${tier.price.toFixed(2)}
-                    <span className="text-xl text-gray-400 font-normal">/month</span>
+                    {formatCurrency(tier.price)}
+                    <span className="text-xl text-gray-400 font-normal">/tháng</span>
                   </div>
                   <p className="text-gray-400 text-sm">Billed monthly, cancel anytime</p>
                 </div>

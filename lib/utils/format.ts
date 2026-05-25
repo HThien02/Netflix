@@ -1,18 +1,16 @@
-export function formatCurrency(amount: number, currency: string = 'USD'): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currency,
-    minimumFractionDigits: 2,
-  }).format(amount)
-}
-
-export function formatVNDCurrency(amount: number): string {
+/** Luôn hiển thị VND (cả khi UI tiếng Anh) */
+export function formatCurrency(amount: number): string {
+  const value = Math.round(amount)
   return new Intl.NumberFormat('vi-VN', {
     style: 'currency',
     currency: 'VND',
     minimumFractionDigits: 0,
-  }).format(amount)
+    maximumFractionDigits: 0,
+  }).format(value)
 }
+
+/** @deprecated Dùng formatCurrency — mọi giá đều VND */
+export const formatVNDCurrency = formatCurrency
 
 export function formatDate(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date

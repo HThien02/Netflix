@@ -185,7 +185,7 @@ export default function DashboardPage() {
                     dataKey="spending"
                     stroke="#E50914"
                     dot={{ fill: '#E50914' }}
-                    name="Spending ($)"
+                    name="Spending (VND)"
                   />
                 </LineChart>
               </ResponsiveContainer>

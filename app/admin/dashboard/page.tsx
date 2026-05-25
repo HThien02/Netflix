@@ -154,7 +154,7 @@ export default function AdminDashboardPage() {
                     labelStyle={{ color: '#fff' }}
                   />
                   <Legend />
-                  <Line type="monotone" dataKey="revenue" stroke="#E50914" name="Revenue ($)" dot={{ fill: '#E50914' }} />
+                  <Line type="monotone" dataKey="revenue" stroke="#E50914" name="Revenue (VND)" dot={{ fill: '#E50914' }} />
                   <Line type="monotone" dataKey="orders" stroke="#10b981" name="Orders" dot={{ fill: '#10b981' }} />
                 </LineChart>
               </ResponsiveContainer>
@@ -303,10 +303,11 @@ export default function AdminDashboardPage() {
           {/* Admin Actions */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-12">
             {[
-              { label: 'Users Management', href: '/admin/users', color: 'blue' },
-              { label: 'Products', href: '/admin/products', color: 'green' },
-              { label: 'Support Tickets', href: '/admin/tickets', color: 'purple' },
-              { label: 'Settings', href: '/admin/settings', color: 'red' },
+              { label: 'Marketplace products', href: '/admin/products', color: 'red' },
+              { label: 'Account pool', href: '/admin/pool', color: 'blue' },
+              { label: 'Active rentals', href: '/admin/rentals', color: 'green' },
+              { label: 'Ban reasons', href: '/admin/ban-reasons', color: 'purple' },
+              { label: 'Marketplace', href: '/marketplace', color: 'red' },
             ].map((action, index) => (
               <motion.div
                 key={index}

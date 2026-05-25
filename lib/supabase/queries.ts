@@ -9,10 +9,7 @@ export async function getProducts() {
     .eq('is_active', true)
     .order('created_at', { ascending: false })
 
-  if (error) {
-    console.error('[v0] Error fetching products:', error)
-    return []
-  }
+  if (error) return []
   return data || []
 }
 
@@ -25,10 +22,7 @@ export async function getProduct(id: string) {
     .eq('id', id)
     .single()
 
-  if (error) {
-    console.error('[v0] Error fetching product:', error)
-    return null
-  }
+  if (error) return null
   return data
 }
 
@@ -41,10 +35,7 @@ export async function getUserByEmail(email: string) {
     .eq('email', email)
     .single()
 
-  if (error) {
-    console.error('[v0] Error fetching user:', error)
-    return null
-  }
+  if (error) return null
   return data
 }
 
@@ -57,10 +48,7 @@ export async function getUserSubscriptions(userId: string) {
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
 
-  if (error) {
-    console.error('[v0] Error fetching subscriptions:', error)
-    return []
-  }
+  if (error) return []
   return data || []
 }
 
@@ -73,10 +61,7 @@ export async function getUserInvoices(userId: string) {
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
 
-  if (error) {
-    console.error('[v0] Error fetching invoices:', error)
-    return []
-  }
+  if (error) return []
   return data || []
 }
 
@@ -89,10 +74,7 @@ export async function getMerchantStore(userId: string) {
     .eq('user_id', userId)
     .single()
 
-  if (error) {
-    console.error('[v0] Error fetching merchant store:', error)
-    return null
-  }
+  if (error) return null
   return data
 }
 
@@ -105,10 +87,7 @@ export async function getCoupons() {
     .eq('is_active', true)
     .order('created_at', { ascending: false })
 
-  if (error) {
-    console.error('[v0] Error fetching coupons:', error)
-    return []
-  }
+  if (error) return []
   return data || []
 }
 
@@ -121,10 +100,7 @@ export async function getUserSupportTickets(userId: string) {
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
 
-  if (error) {
-    console.error('[v0] Error fetching support tickets:', error)
-    return []
-  }
+  if (error) return []
   return data || []
 }
 
@@ -136,10 +112,7 @@ export async function getVIPTiers() {
     .select('*')
     .order('level', { ascending: true })
 
-  if (error) {
-    console.error('[v0] Error fetching VIP tiers:', error)
-    return []
-  }
+  if (error) return []
   return data || []
 }
 
@@ -152,11 +125,21 @@ export async function getUserVIPStatus(userId: string) {
     .eq('user_id', userId)
     .single()
 
-  if (error) {
-    console.error('[v0] Error fetching VIP status:', error)
-    return null
-  }
+  if (error) return null
   return data
+}
+
+// Get purchased accounts (credentials) for user
+export async function getUserPurchasedAccounts(userId: string) {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('purchased_accounts')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+
+  if (error) return []
+  return data || []
 }
 
 // Get merchant products inventory
@@ -168,9 +151,6 @@ export async function getMerchantInventory(merchantId: string) {
     .eq('merchant_id', merchantId)
     .order('created_at', { ascending: false })
 
-  if (error) {
-    console.error('[v0] Error fetching inventory:', error)
-    return []
-  }
+  if (error) return []
   return data || []
 }
