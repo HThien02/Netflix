@@ -9,6 +9,7 @@ import {
 } from '@/lib/payos/client'
 import { setPayosPendingCookie } from '@/lib/payos/pending-cookie'
 import { savePayosPendingToDb } from '@/lib/payos/pending-store'
+import { getSiteUrl } from '@/lib/site'
 import type { Cart } from '@/lib/types'
 
 export async function POST(request: Request) {
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const appUrl = (process.env.APP_URL || 'http://localhost:3000').replace(/\/$/, '')
+    const appUrl = getSiteUrl()
     const orderCode = generatePayosOrderCode()
     const buyerName = String(body.buyerName || body.fullName || 'Khach').trim()
     const description = formatPayosDescription(orderCode)

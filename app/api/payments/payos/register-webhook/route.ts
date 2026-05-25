@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          'Webhook URL phải public (ngrok/Vercel). localhost PayOS không gọi được. Đặt PAYOS_WEBHOOK_URL=https://xxx.ngrok-free.app/api/payments/payos/webhook',
+          'Webhook URL phải public. Đặt PAYOS_WEBHOOK_URL=https://netflixhub.com.vn/api/payments/payos/webhook (hoặc URL deploy của bạn)',
         webhookUrl,
       },
       { status: 400 },

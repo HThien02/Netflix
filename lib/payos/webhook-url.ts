@@ -1,10 +1,11 @@
+import { getSiteUrl } from '@/lib/site'
+
 /** URL webhook PayOS có thể gọi được từ internet (không dùng localhost) */
 export function resolvePayosWebhookUrl(override?: string): string {
   const explicit = override || process.env.PAYOS_WEBHOOK_URL
   if (explicit) return explicit.replace(/\/$/, '')
 
-  const appUrl = (process.env.APP_URL || 'http://localhost:3000').replace(/\/$/, '')
-  return `${appUrl}/api/payments/payos/webhook`
+  return `${getSiteUrl()}/api/payments/payos/webhook`
 }
 
 export function isPublicPayosWebhookUrl(url: string): boolean {

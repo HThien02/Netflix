@@ -1,34 +1,41 @@
-'use client'
+"use client";
 
-import React, { useState } from 'react'
-import Link from 'next/link'
-import { useApp } from '@/lib/context'
-import { t } from '@/lib/translations'
-import { Menu, X, LogOut, ShoppingCart, User, Settings } from 'lucide-react'
-import { motion } from 'framer-motion'
-import { BrandLogo } from '@/components/brand-logo'
+import React, { useState } from "react";
+import Link from "next/link";
+import { useApp } from "@/lib/context";
+import { t } from "@/lib/translations";
+import { Menu, X, LogOut, ShoppingCart, User, Settings } from "lucide-react";
+import { motion } from "framer-motion";
+import { BrandLogo } from "@/components/brand-logo";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
-  const { currentUser, language, setLanguage, isAuthenticated, authReady, logout } = useApp()
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const {
+    currentUser,
+    language,
+    setLanguage,
+    isAuthenticated,
+    authReady,
+    logout,
+  } = useApp();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleLogout = () => {
-    logout()
-  }
+    logout();
+  };
 
   const navItems = isAuthenticated
     ? [
-        { label: t('nav.home', language), href: '/' },
-        { label: t('nav.marketplace', language), href: '/marketplace' },
-        { label: t('nav.myAccounts', language), href: '/my-accounts' },
-        ...(currentUser?.role === 'admin'
-          ? [{ label: t('admin.dashboard', language), href: '/admin/products' }]
+        { label: t("nav.home", language), href: "/" },
+        { label: t("nav.marketplace", language), href: "/marketplace" },
+        { label: t("nav.myAccounts", language), href: "/my-accounts" },
+        ...(currentUser?.role === "admin"
+          ? [{ label: t("admin.dashboard", language), href: "/admin/products" }]
           : []),
       ]
     : [
-        { label: t('nav.home', language), href: '/' },
-        { label: t('nav.marketplace', language), href: '/marketplace' },
-      ]
+        { label: t("nav.home", language), href: "/" },
+        { label: t("nav.marketplace", language), href: "/marketplace" },
+      ];
 
   return (
     <div className="min-h-screen bg-background">
@@ -58,7 +65,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <div className="flex items-center gap-4">
               {/* Language Switcher */}
               <button
-                onClick={() => setLanguage(language === 'en' ? 'vi' : 'en')}
+                onClick={() => setLanguage(language === "en" ? "vi" : "en")}
                 className="px-3 py-1 text-sm bg-netflix-dark hover:bg-netflix-dark-light text-white rounded transition-colors"
               >
                 {language.toUpperCase()}
@@ -66,7 +73,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
               {/* Cart Icon */}
               {isAuthenticated && (
-                <Link href="/cart" className="relative hover:text-netflix-red transition-colors">
+                <Link
+                  href="/cart"
+                  className="relative hover:text-netflix-red transition-colors"
+                >
                   <ShoppingCart size={24} />
                 </Link>
               )}
@@ -76,18 +86,25 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <div className="flex items-center gap-4">
                   <div className="hidden sm:flex items-center gap-3">
                     <img
-                      src={currentUser.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'}
+                      src={
+                        currentUser.avatar ||
+                        "https://api.dicebear.com/7.x/avataaars/svg?seed=default"
+                      }
                       alt="User"
                       className="w-8 h-8 rounded-full"
                     />
-                    <span className="text-white hidden lg:inline text-sm">{currentUser.fullName}</span>
+                    <span className="text-white hidden lg:inline text-sm">
+                      {currentUser.fullName}
+                    </span>
                   </div>
                   <button
                     onClick={handleLogout}
                     className="flex items-center gap-2 text-gray-300 hover:text-netflix-red transition-colors text-sm"
                   >
                     <LogOut size={20} />
-                    <span className="hidden sm:inline">{t('nav.logout', language)}</span>
+                    <span className="hidden sm:inline">
+                      {t("nav.logout", language)}
+                    </span>
                   </button>
                 </div>
               ) : authReady ? (
@@ -96,14 +113,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     href="/auth/login"
                     className="text-gray-300 hover:text-white transition-colors text-sm"
                   >
-                    {t('nav.signIn', language)}
+                    {t("nav.signIn", language)}
                   </Link>
                   <span className="text-gray-600">|</span>
                   <Link
                     href="/auth/signup"
                     className="bg-netflix-red hover:bg-red-700 text-white px-3 py-1 rounded transition-colors text-sm"
                   >
-                    {t('nav.signUp', language)}
+                    {t("nav.signUp", language)}
                   </Link>
                 </div>
               ) : null}
@@ -151,43 +168,132 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <h3 className="text-white font-bold mb-4">
                 <BrandLogo size="sm" />
               </h3>
-              <p className="text-gray-400 text-sm">{t('footer.tagline', language)}</p>
+              <p className="text-gray-400 text-sm">
+                {t("footer.tagline", language)}
+              </p>
             </div>
             <div>
-              <h4 className="text-white font-semibold mb-4">{t('nav.marketplace', language)}</h4>
+              <h4 className="text-white font-semibold mb-4">
+                {t("nav.marketplace", language)}
+              </h4>
               <ul className="space-y-2 text-gray-400 text-sm">
-                <li><Link href="/marketplace" className="hover:text-netflix-red transition-colors">{t('footer.popular', language)}</Link></li>
-                <li><Link href="/marketplace" className="hover:text-netflix-red transition-colors">{t('footer.categories', language)}</Link></li>
-                <li><Link href="/marketplace" className="hover:text-netflix-red transition-colors">{t('footer.deals', language)}</Link></li>
+                <li>
+                  <Link
+                    href="/marketplace"
+                    className="hover:text-netflix-red transition-colors"
+                  >
+                    {t("footer.popular", language)}
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/marketplace"
+                    className="hover:text-netflix-red transition-colors"
+                  >
+                    {t("footer.categories", language)}
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/marketplace"
+                    className="hover:text-netflix-red transition-colors"
+                  >
+                    {t("footer.deals", language)}
+                  </Link>
+                </li>
               </ul>
             </div>
             <div>
-              <h4 className="text-white font-semibold mb-4">{t('footer.support', language)}</h4>
+              <h4 className="text-white font-semibold mb-4">
+                {t("footer.support", language)}
+              </h4>
               <ul className="space-y-2 text-gray-400 text-sm">
-                <li><Link href="/support/tickets" className="hover:text-netflix-red transition-colors">{t('footer.help', language)}</Link></li>
-                <li><Link href="/support/tickets" className="hover:text-netflix-red transition-colors">{t('footer.contact', language)}</Link></li>
-                <li><Link href="#" className="hover:text-netflix-red transition-colors">{t('footer.terms', language)}</Link></li>
+                <li>
+                  <Link
+                    href="/support/tickets"
+                    className="hover:text-netflix-red transition-colors"
+                  >
+                    {t("footer.help", language)}
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/support/tickets"
+                    className="hover:text-netflix-red transition-colors"
+                  >
+                    {t("footer.contact", language)}
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="#"
+                    className="hover:text-netflix-red transition-colors"
+                  >
+                    {t("footer.terms", language)}
+                  </Link>
+                </li>
               </ul>
             </div>
             <div>
-              <h4 className="text-white font-semibold mb-4">{t('footer.legal', language)}</h4>
+              <h4 className="text-white font-semibold mb-4">
+                {t("footer.legal", language)}
+              </h4>
               <ul className="space-y-2 text-gray-400 text-sm">
-                <li><Link href="#" className="hover:text-netflix-red transition-colors">{t('footer.privacy', language)}</Link></li>
-                <li><Link href="#" className="hover:text-netflix-red transition-colors">{t('footer.tos', language)}</Link></li>
-                <li><Link href="#" className="hover:text-netflix-red transition-colors">{t('footer.cookies', language)}</Link></li>
+                <li>
+                  <Link
+                    href="#"
+                    className="hover:text-netflix-red transition-colors"
+                  >
+                    {t("footer.privacy", language)}
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="#"
+                    className="hover:text-netflix-red transition-colors"
+                  >
+                    {t("footer.tos", language)}
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="#"
+                    className="hover:text-netflix-red transition-colors"
+                  >
+                    {t("footer.cookies", language)}
+                  </Link>
+                </li>
               </ul>
             </div>
           </div>
           <div className="border-t border-netflix-dark pt-8 flex flex-col md:flex-row justify-between items-center">
-            <p className="text-gray-400 text-sm">&copy; 2024 NetflixHub. {t('footer.rights', language)}</p>
+            <p className="text-gray-400 text-sm">
+              &copy; {new Date().getFullYear()} NetflixHub · netflixhub.com.vn ·
+              Designed by HieuThien {t("footer.rights", language)}
+            </p>
             <div className="flex gap-4 mt-4 md:mt-0">
-              <a href="#" className="text-gray-400 hover:text-netflix-red transition-colors">Twitter</a>
-              <a href="#" className="text-gray-400 hover:text-netflix-red transition-colors">Facebook</a>
-              <a href="#" className="text-gray-400 hover:text-netflix-red transition-colors">Instagram</a>
+              <a
+                href="#"
+                className="text-gray-400 hover:text-netflix-red transition-colors"
+              >
+                Twitter
+              </a>
+              <a
+                href="#"
+                className="text-gray-400 hover:text-netflix-red transition-colors"
+              >
+                Facebook
+              </a>
+              <a
+                href="#"
+                className="text-gray-400 hover:text-netflix-red transition-colors"
+              >
+                Instagram
+              </a>
             </div>
           </div>
         </div>
       </footer>
     </div>
-  )
+  );
 }

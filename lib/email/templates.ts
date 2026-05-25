@@ -1,7 +1,9 @@
 import type { Lang } from '@/lib/translations'
 import { getBrandName } from '@/lib/email/config'
 
-const appUrl = () => process.env.APP_URL || 'http://localhost:3000'
+import { getSiteUrl } from '@/lib/site'
+
+const appUrl = () => getSiteUrl()
 
 function layout(lang: Lang, title: string, body: string) {
   const appName = getBrandName()

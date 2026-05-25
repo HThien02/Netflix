@@ -14,7 +14,7 @@ SMTP_FROM_EMAIL=your@gmail.com
 SMTP_ADMIN_EMAIL=admin@example.com
 EMAIL_BRAND_NAME=TFlowers Shop
 CRON_SECRET=your_random_secret
-APP_URL=http://localhost:3000
+APP_URL=https://netflixhub.com.vn
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 ```
 

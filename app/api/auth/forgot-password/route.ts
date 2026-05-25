@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendForgotPasswordEmail } from '@/lib/email/send'
+import { getSiteUrl } from '@/lib/site'
 
 export async function POST(request: Request) {
   try {
@@ -30,7 +31,7 @@ export async function POST(request: Request) {
       })
 
       const lang = (language === 'en' ? 'en' : user.language) as 'vi' | 'en'
-      const base = process.env.APP_URL || 'http://localhost:3000'
+      const base = getSiteUrl()
       const resetUrl = `${base}/auth/reset-password?token=${token}`
 
       await sendForgotPasswordEmail(user.email, user.full_name, resetUrl, lang)
