@@ -1,0 +1,8 @@
+# Minimal Supabase CLI config — link with: npx supabase link --project-ref YOUR_REF
+project_id = "netflix-saas"
+
+[api]
+enabled = true
+
+[db]
+major_version = 15
