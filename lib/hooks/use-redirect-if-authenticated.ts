@@ -1,21 +1,30 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useApp } from '@/lib/context'
 
-/** Đã đăng nhập → chuyển về trang chủ (không cho vào login/signup). */
+function safeNextPath(raw: string | null, fallback: string): string {
+  if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return fallback
+  return raw
+}
+
+/** Đã đăng nhập → chuyển về trang chủ (trừ ?switch=1 để đổi tài khoản). */
 export function useRedirectIfAuthenticated(redirectTo = '/') {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { isAuthenticated, authReady } = useApp()
 
+  const switchAccount = searchParams.get('switch') === '1'
+  const nextAfterLogin = safeNextPath(searchParams.get('next'), redirectTo)
+
   useEffect(() => {
-    if (authReady && isAuthenticated) {
-      router.replace(redirectTo)
+    if (authReady && isAuthenticated && !switchAccount) {
+      router.replace(nextAfterLogin)
     }
-  }, [authReady, isAuthenticated, router, redirectTo])
+  }, [authReady, isAuthenticated, router, nextAfterLogin, switchAccount])
 
-  const shouldShowAuthForm = authReady && !isAuthenticated
+  const shouldShowAuthForm = authReady && (!isAuthenticated || switchAccount)
 
-  return { authReady, isAuthenticated, shouldShowAuthForm }
+  return { authReady, isAuthenticated, shouldShowAuthForm, nextAfterLogin, switchAccount }
 }

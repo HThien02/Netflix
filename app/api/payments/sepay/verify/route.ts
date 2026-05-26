@@ -1,10 +1,35 @@
 import { NextResponse } from 'next/server'
 import { getSessionFromRequest } from '@/lib/auth/session-cookie'
-import { resolveSepayWebhookUrl } from '@/lib/sepay/webhook-url'
+import { isSepayApiConfigured } from '@/lib/sepay/api-client'
 import { getSepayOrderStatus, isSepayOrderAlreadyCompleted } from '@/lib/sepay/pending-store'
 import { tryCompleteSepayFromApi } from '@/lib/sepay/sync-from-api'
 
-/** Chỉ đọc DB — không gọi SePay API (tránh “tự checkout”). Dùng ?sync=1 khi bấm kiểm tra thủ công. */
+const POLL_INTERVAL_MS = 2000
+const MAX_WAIT_SEC = 90
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function resolvePaidState(code: string) {
+  let row = await getSepayOrderStatus(code)
+  let paid = await isSepayOrderAlreadyCompleted(code)
+
+  if (!paid && isSepayApiConfigured()) {
+    const synced = await tryCompleteSepayFromApi(code)
+    if (synced.completed) {
+      row = await getSepayOrderStatus(code)
+      paid = true
+    }
+  }
+
+  return { row, paid }
+}
+
+/**
+ * Kiểm tra đơn SePay.
+ * ?wait=55 — giữ kết nối, kiểm tra lại mỗi 2s tối đa 55s (chờ webhook xử lý xong rồi mới trả).
+ */
 export async function GET(request: Request) {
   const session = getSessionFromRequest(request)
   if (!session) {
@@ -17,16 +42,20 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Missing code' }, { status: 400 })
   }
 
-  const allowApiSync = url.searchParams.get('sync') === '1'
+  const waitRaw = parseInt(url.searchParams.get('wait') || '0', 10)
+  const waitSec = Number.isFinite(waitRaw)
+    ? Math.min(MAX_WAIT_SEC, Math.max(0, waitRaw))
+    : 0
 
-  let row = await getSepayOrderStatus(code)
-  let paid = await isSepayOrderAlreadyCompleted(code)
+  let { row, paid } = await resolvePaidState(code)
 
-  if (!paid && allowApiSync) {
-    const synced = await tryCompleteSepayFromApi(code)
-    if (synced.completed) {
-      row = await getSepayOrderStatus(code)
-      paid = true
+  if (!paid && waitSec > 0) {
+    const deadline = Date.now() + waitSec * 1000
+    while (Date.now() < deadline && !paid) {
+      await sleep(POLL_INTERVAL_MS)
+      const next = await resolvePaidState(code)
+      row = next.row
+      paid = next.paid
     }
   }
 
@@ -46,11 +75,16 @@ export async function GET(request: Request) {
       paid: false,
       paymentCode: code,
       status: row?.status === 'completed' ? 'COMPLETED_NO_WEBHOOK' : 'PENDING',
+      waitedSeconds: waitSec,
       hintVi:
-        'Chờ webhook SePay hoàn tất đơn. Trên my.sepay.vn webhook phải là ' +
-        resolveSepayWebhookUrl() +
-        ' (KHÔNG dùng /api/payments/payos/webhook). URL không www có thể bị Redirect — dùng www.',
-      sepayWebhookUrl: resolveSepayWebhookUrl(),
+        row == null
+          ? 'Không tìm thấy đơn chờ với mã này — tạo lại từ giỏ hàng.'
+          : 'Chưa thấy tiền vào hoặc nội dung CK chưa khớp mã. Kiểm tra đúng số tiền và nội dung "Thanh toan don hang ' +
+            code +
+            '".',
+      noteVi:
+        'Response {"success":true} trên my.sepay.vn là webhook server→server — trình duyệt không nhận được; trang chờ qua API verify này.',
+      sepayApiSync: isSepayApiConfigured(),
     },
     { status: 402 },
   )

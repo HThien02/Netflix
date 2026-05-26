@@ -190,6 +190,8 @@ export const translations = {
     "auth.googleError": "Google sign-in failed. Try again or use email.",
     "auth.googleExchangeError": "Could not complete Google sign-in. Check Supabase Google provider settings.",
     "auth.orEmail": "or sign in with email",
+    "auth.switchAccountHint": "Sign in with another account (Google will ask which account to use).",
+    "auth.switchAccount": "Use another account",
     "checkout.confirmed": "Order Confirmed!",
     "checkout.confirmedDesc":
       "Your streaming login details are saved under My Accounts.",
@@ -605,6 +607,8 @@ export const translations = {
     "auth.googleError": "Đăng nhập Google thất bại. Thử lại hoặc dùng email.",
     "auth.googleExchangeError": "Không hoàn tất đăng nhập Google. Kiểm tra cấu hình Google trên Supabase.",
     "auth.orEmail": "hoặc đăng nhập bằng email",
+    "auth.switchAccountHint": "Đăng nhập tài khoản khác (Google sẽ hỏi chọn tài khoản).",
+    "auth.switchAccount": "Dùng tài khoản khác",
     "checkout.confirmed": "Thanh toán thành công!",
     "checkout.confirmedDesc":
       "Thông tin đăng nhập đã lưu tại Tài khoản của tôi.",

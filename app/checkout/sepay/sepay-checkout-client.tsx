@@ -42,9 +42,11 @@ export function SepayCheckoutClient() {
   const [alreadyPaid, setAlreadyPaid] = useState(false)
   const [copied, setCopied] = useState(false)
 
+  /** Một request giữ mở tối đa ~55s, chờ webhook/DB cập nhật rồi mới trả. */
   const checkPaid = useCallback(async (code: string): Promise<boolean> => {
     try {
-      const res = await fetch(`/api/payments/sepay/verify?code=${encodeURIComponent(code)}`, {
+      const q = new URLSearchParams({ code, wait: '55' })
+      const res = await fetch(`/api/payments/sepay/verify?${q.toString()}`, {
         credentials: 'same-origin',
       })
       const data = (await res.json()) as { paid?: boolean; sepayTransactionId?: number }
@@ -129,16 +131,21 @@ export function SepayCheckoutClient() {
 
     let cancelled = false
 
-    const poll = async () => {
-      const ok = await checkPaid(display.paymentCode)
-      if (!cancelled && ok) await handlePaid()
+    const loop = async () => {
+      while (!cancelled) {
+        const ok = await checkPaid(display.paymentCode)
+        if (cancelled) return
+        if (ok) {
+          await handlePaid()
+          return
+        }
+        await new Promise((r) => setTimeout(r, 2000))
+      }
     }
 
-    void poll()
-    const id = window.setInterval(() => void poll(), 4000)
+    void loop()
     return () => {
       cancelled = true
-      window.clearInterval(id)
     }
   }, [display?.paymentCode, paid, alreadyPaid, loading, checkPaid, handlePaid])
 

@@ -20,11 +20,17 @@ export function GoogleSignInButton({ language, nextPath = '/' }: Props) {
     setLoading(true)
     setError('')
     try {
+      // Xóa session cũ (nh_session + Supabase) để không giữ tài khoản trước đó
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' })
       const supabase = createClient()
+      await supabase.auth.signOut()
+
       const redirectTo = new URL('/auth/callback', window.location.origin)
-      if (nextPath && nextPath !== '/') {
-        redirectTo.searchParams.set('next', nextPath)
-      }
+      const next =
+        nextPath && nextPath.startsWith('/') && !nextPath.startsWith('//')
+          ? nextPath
+          : new URLSearchParams(window.location.search).get('next') || '/'
+      redirectTo.searchParams.set('next', next)
 
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: 'google',

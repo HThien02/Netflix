@@ -97,6 +97,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                       {currentUser.fullName}
                     </span>
                   </div>
+                  <Link
+                    href="/auth/login?switch=1"
+                    className="hidden sm:inline text-gray-400 hover:text-white text-sm"
+                  >
+                    {t("auth.switchAccount", language)}
+                  </Link>
                   <button
                     onClick={handleLogout}
                     className="flex items-center gap-2 text-gray-300 hover:text-netflix-red transition-colors text-sm"

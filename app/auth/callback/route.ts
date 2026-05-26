@@ -48,7 +48,16 @@ export async function GET(request: NextRequest) {
     })
 
     const res = NextResponse.redirect(`${origin}${next}`)
-    return setSessionOnResponse(res, token)
+    setSessionOnResponse(res, token)
+
+    // Tránh Supabase Auth cookie giữ phiên Google cũ lần sau
+    try {
+      await supabase.auth.signOut()
+    } catch {
+      /* ignore */
+    }
+
+    return res
   } catch (err) {
     console.error('[auth/callback]', err)
     return NextResponse.redirect(`${origin}/auth/login?error=oauth_failed`)

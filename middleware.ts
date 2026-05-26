@@ -1,4 +1,11 @@
 import { updateSession } from '@/lib/supabase/proxy'
+import { getAppSessionFromRequest } from '@/lib/auth/middleware-session'
+import {
+  isAuthFormPath,
+  requiresAdminSession,
+  requiresUserSession,
+  roleAllowsAdmin,
+} from '@/lib/auth/route-access'
 import { type NextRequest, NextResponse } from 'next/server'
 
 const WEBHOOK_PATHS = new Set([
@@ -6,14 +13,12 @@ const WEBHOOK_PATHS = new Set([
   '/api/payments/payos/webhook',
 ])
 
-function normalizeWebhookPath(pathname: string): string {
-  const p = pathname.replace(/\/+$/, '') || '/'
-  return p
+function normalizePath(pathname: string): string {
+  return pathname.replace(/\/+$/, '') || '/'
 }
 
-/** Webhook: rewrite apex → www nội bộ (tránh 307). Không chạy Supabase session. */
 function handlePaymentWebhook(request: NextRequest): NextResponse {
-  const path = normalizeWebhookPath(request.nextUrl.pathname)
+  const path = normalizePath(request.nextUrl.pathname)
   if (!WEBHOOK_PATHS.has(path)) {
     return NextResponse.next()
   }
@@ -36,11 +41,60 @@ function handlePaymentWebhook(request: NextRequest): NextResponse {
   return NextResponse.next()
 }
 
+function applyAppSessionGuards(request: NextRequest): NextResponse | null {
+  const path = normalizePath(request.nextUrl.pathname)
+
+  if (path.startsWith('/api') || path.startsWith('/_next')) {
+    return null
+  }
+
+  const session = getAppSessionFromRequest(request)
+  const switchAccount = request.nextUrl.searchParams.get('switch') === '1'
+
+  if (isAuthFormPath(path) && session && !switchAccount) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/'
+    url.search = ''
+    return NextResponse.redirect(url)
+  }
+
+  if (requiresAdminSession(path)) {
+    if (!session) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/auth/login'
+      url.search = `?next=${encodeURIComponent(path)}`
+      return NextResponse.redirect(url)
+    }
+    if (!roleAllowsAdmin(session)) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/'
+      url.search = ''
+      return NextResponse.redirect(url)
+    }
+  }
+
+  if (requiresUserSession(path) && !session) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/auth/login'
+    url.search = `?next=${encodeURIComponent(`${path}${request.nextUrl.search}`)}`
+    return NextResponse.redirect(url)
+  }
+
+  return null
+}
+
 export async function middleware(request: NextRequest) {
-  const path = normalizeWebhookPath(request.nextUrl.pathname)
+  const path = normalizePath(request.nextUrl.pathname)
+
   if (WEBHOOK_PATHS.has(path)) {
     return handlePaymentWebhook(request)
   }
+
+  const guardResponse = applyAppSessionGuards(request)
+  if (guardResponse) {
+    return guardResponse
+  }
+
   return await updateSession(request)
 }
 

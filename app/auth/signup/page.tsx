@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { Suspense, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useRedirectIfAuthenticated } from '@/lib/hooks/use-redirect-if-authenticated'
 import Link from 'next/link'
@@ -11,7 +11,7 @@ import { motion } from 'framer-motion'
 import { Eye, EyeOff, Mail, Lock, User as UserIcon, CheckCircle } from 'lucide-react'
 import { GoogleSignInButton } from '@/components/auth/google-sign-in-button'
 
-export default function SignupPage() {
+function SignupPageContent() {
   const router = useRouter()
   const { shouldShowAuthForm } = useRedirectIfAuthenticated()
   const { setCurrentUser, setIsAuthenticated, language } = useApp()
@@ -280,5 +280,13 @@ export default function SignupPage() {
         </div>
       </motion.div>
     </div>
+  )
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignupPageContent />
+    </Suspense>
   )
 }

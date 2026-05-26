@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { Suspense, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useRedirectIfAuthenticated } from '@/lib/hooks/use-redirect-if-authenticated'
 import Link from 'next/link'
@@ -14,15 +14,16 @@ import type { User } from '@/lib/types'
 import { BrandLogo } from '@/components/brand-logo'
 import { GoogleSignInButton } from '@/components/auth/google-sign-in-button'
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter()
-  const { shouldShowAuthForm } = useRedirectIfAuthenticated()
+  const { shouldShowAuthForm, nextAfterLogin, switchAccount } = useRedirectIfAuthenticated()
   const {
     setCurrentUser,
     setIsAuthenticated,
     setUserSubscriptions,
     setUserInvoices,
     setPurchasedAccounts,
+    logout,
     language,
   } = useApp()
   const [email, setEmail] = useState('')
@@ -30,6 +31,10 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (switchAccount) void logout()
+  }, [switchAccount, logout])
 
   useEffect(() => {
     const oauthErr = new URLSearchParams(window.location.search).get('error')
@@ -55,7 +60,7 @@ export default function LoginPage() {
     setUserInvoices(data.invoices)
     setPurchasedAccounts(data.purchasedAccounts)
 
-    router.push('/')
+    router.push(nextAfterLogin)
   }
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -135,13 +140,19 @@ export default function LoginPage() {
                 <p className="text-gray-400 text-sm mt-1">{t('auth.welcomeBack', language)}</p>
               </div>
 
+              {switchAccount && (
+                <p className="mb-4 text-amber-300/90 text-sm text-center">
+                  {t('auth.switchAccountHint', language)}
+                </p>
+              )}
+
               {error && (
                 <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 text-red-300 rounded-lg text-sm">
                   {error}
                 </div>
               )}
 
-              <GoogleSignInButton language={language} />
+              <GoogleSignInButton language={language} nextPath={nextAfterLogin} />
 
               <div className="relative my-6">
                 <div className="absolute inset-0 flex items-center">
@@ -213,5 +224,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageContent />
+    </Suspense>
   )
 }
