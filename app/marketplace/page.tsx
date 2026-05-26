@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { AppLayout } from '@/components/app-layout'
 import { ProductCard } from '@/components/product-card'
 import { useApp } from '@/lib/context'
@@ -8,8 +8,14 @@ import { t } from '@/lib/translations'
 import { mockMerchants } from '@/lib/mock-data'
 import { useProducts } from '@/lib/hooks/use-products'
 import { isProductPurchasable } from '@/lib/products/catalog'
+import {
+  getMerchantDescription,
+  getMerchantStoreName,
+} from '@/lib/merchants/display'
 import { motion } from 'framer-motion'
-import { Search, Grid3x3, List } from 'lucide-react'
+import { Search, Grid3x3, List, ChevronLeft, ChevronRight } from 'lucide-react'
+
+const PAGE_SIZE = 12
 
 export default function MarketplacePage() {
   const { language } = useApp()
@@ -17,6 +23,7 @@ export default function MarketplacePage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [selectedMerchant, setSelectedMerchant] = useState<string>('all')
+  const [page, setPage] = useState(1)
 
   const filteredProducts = useMemo(() => {
     return products
@@ -34,6 +41,21 @@ export default function MarketplacePage() {
         return aOk - bOk || a.name.localeCompare(b.name)
       })
   }, [searchQuery, selectedMerchant, products])
+
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE))
+
+  useEffect(() => {
+    setPage(1)
+  }, [searchQuery, selectedMerchant])
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages)
+  }, [page, totalPages])
+
+  const paginatedProducts = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE
+    return filteredProducts.slice(start, start + PAGE_SIZE)
+  }, [filteredProducts, page])
 
   return (
     <AppLayout>
@@ -113,7 +135,7 @@ export default function MarketplacePage() {
                       : 'bg-white/10 text-gray-300 border border-white/10 hover:border-white/20'
                   }`}
                 >
-                  {merchant.storeName}
+                  {getMerchantStoreName(merchant.id, language, merchant.storeName)}
                 </button>
               ))}
             </div>
@@ -124,17 +146,50 @@ export default function MarketplacePage() {
       <section className="py-12 bg-netflix-black">
         <div className="container mx-auto px-4">
           {filteredProducts.length > 0 ? (
-            <div
-              className={
-                viewMode === 'grid'
-                  ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
-                  : 'space-y-4'
-              }
-            >
-              {filteredProducts.map((product) => (
-                <ProductCard key={product.id} product={product} language={language} />
-              ))}
-            </div>
+            <>
+              <div
+                className={
+                  viewMode === 'grid'
+                    ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
+                    : 'space-y-4'
+                }
+              >
+                {paginatedProducts.map((product) => (
+                  <ProductCard key={product.id} product={product} language={language} />
+                ))}
+              </div>
+
+              {totalPages > 1 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-10 pt-8 border-t border-netflix-dark">
+                  <p className="text-gray-400 text-sm">
+                    {t('marketplace.pageInfo', language)
+                      .replace('{page}', String(page))
+                      .replace('{total}', String(totalPages))
+                      .replace('{count}', String(filteredProducts.length))}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={page <= 1}
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      className="flex items-center gap-1 px-4 py-2 rounded-lg bg-white/10 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white/20 transition-colors"
+                    >
+                      <ChevronLeft size={18} />
+                      {t('marketplace.prevPage', language)}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={page >= totalPages}
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      className="flex items-center gap-1 px-4 py-2 rounded-lg bg-white/10 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white/20 transition-colors"
+                    >
+                      {t('marketplace.nextPage', language)}
+                      <ChevronRight size={18} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           ) : (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -157,8 +212,12 @@ export default function MarketplacePage() {
                 key={merchant.id}
                 className="glass-dark rounded-2xl p-6 border border-white/10 hover:border-netflix-red/50 transition-all"
               >
-                <h3 className="text-white font-bold text-lg mb-1">{merchant.storeName}</h3>
-                <p className="text-gray-400 text-sm">{merchant.description}</p>
+                <h3 className="text-white font-bold text-lg mb-1">
+                  {getMerchantStoreName(merchant.id, language, merchant.storeName)}
+                </h3>
+                <p className="text-gray-400 text-sm">
+                  {getMerchantDescription(merchant.id, language, merchant.description)}
+                </p>
               </div>
             ))}
           </div>

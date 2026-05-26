@@ -75,6 +75,17 @@ export async function loadPayosPendingFromDb(
   }
 }
 
+export async function getPayosOrderUserId(orderCode: number): Promise<string | null> {
+  if (!isSupabaseConfigured()) return null
+  const supabase = createAdminClient()
+  const { data } = await supabase
+    .from('payos_pending_orders')
+    .select('user_id')
+    .eq('order_code', orderCode)
+    .maybeSingle()
+  return data?.user_id ? String(data.user_id) : null
+}
+
 export async function isPayosOrderAlreadyCompleted(orderCode: number): Promise<boolean> {
   if (!isSupabaseConfigured()) return false
   const supabase = createAdminClient()

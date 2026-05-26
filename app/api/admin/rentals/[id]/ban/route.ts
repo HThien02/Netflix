@@ -9,7 +9,7 @@ export async function POST(
   try {
     const { id } = await params
     const body = await request.json()
-    await requireAdminUser(body.adminUserId)
+    await requireAdminUser(body.adminUserId, request)
     await banPurchasedAccount({
       rentalId: id,
       adminUserId: body.adminUserId,

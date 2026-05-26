@@ -4,7 +4,12 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { sendWelcomeEmail } from '@/lib/email/send'
 import { signSession, setSessionOnResponse } from '@/lib/auth/session-cookie'
 
+import { guardApiRequest } from '@/lib/security/request-guard'
+
 export async function POST(request: Request) {
+  const denied = await guardApiRequest(request)
+  if (denied) return denied
+
   try {
     const { email, password, fullName, language = 'vi' } = await request.json()
     if (!email?.includes('@') || !password || password.length < 6 || !fullName?.trim()) {

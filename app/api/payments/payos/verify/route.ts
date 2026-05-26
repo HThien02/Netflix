@@ -5,11 +5,32 @@ import {
   isPayosConfigured,
   isPayosPaymentPaid,
 } from '@/lib/payos/client'
+import { getPayosOrderUserId } from '@/lib/payos/pending-store'
+import {
+  getSessionOrNull,
+  guardApiRequest,
+} from '@/lib/security/request-guard'
 
 export async function GET(request: Request) {
+  const denied = await guardApiRequest(request, {
+    auth: 'session',
+    skipRateLimit: true,
+  })
+  if (denied) return denied
+
+  const session = getSessionOrNull(request)
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const orderCode = Number(new URL(request.url).searchParams.get('orderCode'))
   if (!orderCode) {
     return NextResponse.json({ error: 'Missing orderCode' }, { status: 400 })
+  }
+
+  const ownerId = await getPayosOrderUserId(orderCode)
+  if (ownerId && ownerId !== session.userId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   if (!isPayosConfigured()) {

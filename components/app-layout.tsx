@@ -8,6 +8,42 @@ import { Menu, X, LogOut, ShoppingCart, User, Settings } from "lucide-react";
 import { motion } from "framer-motion";
 import { BrandLogo } from "@/components/brand-logo";
 
+function FooterSocialLinks({ language }: { language: "vi" | "en" }) {
+  const facebook = process.env.NEXT_PUBLIC_FACEBOOK_URL?.trim();
+  const instagram = process.env.NEXT_PUBLIC_INSTAGRAM_URL?.trim();
+  const links = [
+    facebook && { href: facebook, label: "Facebook" },
+    instagram && { href: instagram, label: "Instagram" },
+  ].filter(Boolean) as { href: string; label: string }[];
+
+  if (links.length === 0) {
+    return (
+      <Link
+        href="/support/tickets"
+        className="text-gray-400 hover:text-netflix-red transition-colors text-sm mt-4 md:mt-0"
+      >
+        {t("footer.contact", language)}
+      </Link>
+    );
+  }
+
+  return (
+    <div className="flex gap-4 mt-4 md:mt-0">
+      {links.map((link) => (
+        <a
+          key={link.label}
+          href={link.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-gray-400 hover:text-netflix-red transition-colors text-sm"
+        >
+          {link.label}
+        </a>
+      ))}
+    </div>
+  );
+}
+
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const {
     currentUser,
@@ -16,7 +52,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     isAuthenticated,
     authReady,
     logout,
+    cart,
   } = useApp();
+
+  const cartItemCount =
+    cart?.items?.reduce((sum, item) => sum + (item.quantity || 1), 0) ?? 0;
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleLogout = () => {
@@ -75,9 +115,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               {isAuthenticated && (
                 <Link
                   href="/cart"
-                  className="relative hover:text-netflix-red transition-colors"
+                  className="relative text-gray-300 hover:text-netflix-red transition-colors"
+                  aria-label={t("nav.cart", language)}
                 >
                   <ShoppingCart size={24} />
+                  {cartItemCount > 0 && (
+                    <span className="absolute -top-2 -right-2 min-w-[1.25rem] h-5 px-1 flex items-center justify-center rounded-full bg-netflix-red text-white text-xs font-bold">
+                      {cartItemCount > 99 ? "99+" : cartItemCount}
+                    </span>
+                  )}
                 </Link>
               )}
 
@@ -97,12 +143,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                       {currentUser.fullName}
                     </span>
                   </div>
-                  <Link
-                    href="/auth/login?switch=1"
-                    className="hidden sm:inline text-gray-400 hover:text-white text-sm"
-                  >
-                    {t("auth.switchAccount", language)}
-                  </Link>
                   <button
                     onClick={handleLogout}
                     className="flex items-center gap-2 text-gray-300 hover:text-netflix-red transition-colors text-sm"
@@ -277,26 +317,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               &copy; {new Date().getFullYear()} NetflixHub · netflixhub.com.vn ·
               Designed by HieuThien {t("footer.rights", language)}
             </p>
-            <div className="flex gap-4 mt-4 md:mt-0">
-              <a
-                href="#"
-                className="text-gray-400 hover:text-netflix-red transition-colors"
-              >
-                Twitter
-              </a>
-              <a
-                href="#"
-                className="text-gray-400 hover:text-netflix-red transition-colors"
-              >
-                Facebook
-              </a>
-              <a
-                href="#"
-                className="text-gray-400 hover:text-netflix-red transition-colors"
-              >
-                Instagram
-              </a>
-            </div>
+            <FooterSocialLinks language={language} />
           </div>
         </div>
       </footer>

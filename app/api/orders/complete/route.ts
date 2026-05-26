@@ -2,9 +2,25 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { completeOrderServer } from '@/lib/orders/complete-order'
 import { isSupabaseConfigured } from '@/lib/auth/login'
+import { isDemoCheckoutAllowed } from '@/lib/payments/demo-checkout'
+import {
+  getSessionOrNull,
+  guardApiRequest,
+} from '@/lib/security/request-guard'
 import type { Cart, Lang } from '@/lib/types'
 
 export async function POST(request: Request) {
+  const denied = await guardApiRequest(request, {
+    auth: 'session',
+    skipRateLimit: true,
+  })
+  if (denied) return denied
+
+  const session = getSessionOrNull(request)
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   try {
     const body = await request.json()
     const {
@@ -25,11 +41,25 @@ export async function POST(request: Request) {
       paymentMethod: 'payos' | 'sepay' | 'credit_card' | 'wallet'
     }
 
-    if (!userId || !cart?.items?.length) {
-      return NextResponse.json({ error: 'Missing cart or user' }, { status: 400 })
+    if (userId !== session.userId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    let email = userEmail || ''
+    if (process.env.NODE_ENV === 'production' && !isDemoCheckoutAllowed()) {
+      return NextResponse.json(
+        {
+          error:
+            'Orders can only be completed through verified payment (PayOS / SePay).',
+        },
+        { status: 403 },
+      )
+    }
+
+    if (!cart?.items?.length) {
+      return NextResponse.json({ error: 'Missing cart' }, { status: 400 })
+    }
+
+    let email = userEmail || session.email
     let name = userName || 'Customer'
     const lang = (language === 'en' ? 'en' : 'vi') as Lang
 
@@ -38,7 +68,7 @@ export async function POST(request: Request) {
       const { data: user } = await supabase
         .from('users')
         .select('email, full_name, language')
-        .eq('id', userId)
+        .eq('id', session.userId)
         .single()
       if (user) {
         email = user.email || email
@@ -51,7 +81,7 @@ export async function POST(request: Request) {
     }
 
     const result = await completeOrderServer({
-      userId,
+      userId: session.userId,
       userEmail: email,
       userName: name,
       language: lang,

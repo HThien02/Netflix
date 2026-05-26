@@ -11,8 +11,10 @@ import { isPayosReturnCancelled } from '@/lib/payos/client'
 import type { Invoice, PurchasedAccount } from '@/lib/types'
 import { Loader2 } from 'lucide-react'
 import confetti from 'canvas-confetti'
+import { PaymentSuccessView } from '@/components/checkout/payment-success-view'
 
-function normalizeInvoice(inv: Invoice): Invoice {
+function normalizeInvoice(inv: Invoice | null | undefined): Invoice | null {
+  if (!inv) return null
   return {
     ...inv,
     invoiceDate: new Date(inv.invoiceDate),
@@ -43,6 +45,7 @@ export function PayosReturnClient() {
     setPurchasedAccounts,
     userInvoices,
     purchasedAccounts,
+    refreshUserData,
   } = useApp()
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
@@ -120,13 +123,32 @@ export function PayosReturnClient() {
         return
       }
 
-      const invoice = normalizeInvoice(data.invoice as Invoice)
-      const accounts = (data.accounts as PurchasedAccount[]).map(normalizeAccount)
-
       clearPayosPendingCheckout()
       setCart(null)
+
+      if (data.alreadyCompleted) {
+        await refreshUserData()
+        setMessage(t('checkout.confirmed', language))
+        confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } })
+        return
+      }
+
+      const invoice = normalizeInvoice(data.invoice as Invoice)
+      const accounts = ((data.accounts as PurchasedAccount[]) || []).map(normalizeAccount)
+
+      if (!invoice) {
+        await refreshUserData()
+        setMessage(t('checkout.confirmed', language))
+        confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } })
+        return
+      }
+
       setUserInvoices([invoice, ...userInvoices])
-      setPurchasedAccounts([...accounts, ...purchasedAccounts])
+      if (accounts.length > 0) {
+        setPurchasedAccounts([...accounts, ...purchasedAccounts])
+      } else {
+        await refreshUserData()
+      }
       setMessage(t('checkout.confirmed', language))
       confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } })
     } catch (e) {
@@ -216,13 +238,7 @@ export function PayosReturnClient() {
             </div>
           </div>
         ) : message ? (
-          <div className="text-center max-w-md">
-            <p className="text-2xl font-bold text-white mb-2">{message}</p>
-            <p className="text-gray-400 mb-6">{t('checkout.confirmedDesc', language)}</p>
-            <Link href="/my-accounts" className="inline-block btn-primary-red py-3 px-8">
-              {t('checkout.viewAccounts', language)}
-            </Link>
-          </div>
+          <PaymentSuccessView language={language} active />
         ) : (
           <div className="flex flex-col items-center gap-3 text-gray-300">
             <Loader2 className="animate-spin text-netflix-red" size={40} />

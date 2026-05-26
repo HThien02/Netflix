@@ -48,7 +48,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    await requireAdminUser(body.adminUserId)
+    await requireAdminUser(body.adminUserId, request)
     if (!isSupabaseConfigured()) {
       return NextResponse.json({ error: 'Supabase required' }, { status: 400 })
     }

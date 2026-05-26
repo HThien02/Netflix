@@ -11,7 +11,7 @@ export async function PATCH(
   try {
     const { id } = await params
     const body = await request.json()
-    await requireAdminUser(body.adminUserId)
+    await requireAdminUser(body.adminUserId, request)
     if (!isSupabaseConfigured()) {
       return NextResponse.json({ error: 'Supabase required' }, { status: 400 })
     }
@@ -43,7 +43,7 @@ export async function DELETE(
     const adminUserId =
       request.headers.get('x-admin-user-id') ||
       new URL(request.url).searchParams.get('adminUserId')
-    await requireAdminUser(adminUserId)
+    await requireAdminUser(adminUserId, request)
     if (!isSupabaseConfigured()) {
       return NextResponse.json({ error: 'Supabase required' }, { status: 400 })
     }

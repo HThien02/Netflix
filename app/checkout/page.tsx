@@ -16,8 +16,10 @@ import { saveSepayPendingCheckout, saveSepayPaymentDetails } from '@/lib/sepay/p
 import { completePurchase } from '@/lib/orders/complete-purchase'
 import { Invoice } from '@/lib/types'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Smartphone, Building2, CheckCircle2 } from 'lucide-react'
+import { ArrowLeft, Smartphone, Building2 } from 'lucide-react'
 import confetti from 'canvas-confetti'
+import { PaymentSuccessView } from '@/components/checkout/payment-success-view'
+import { useClientRateLimit } from '@/lib/hooks/use-client-rate-limit'
 
 export default function CheckoutPage() {
   const router = useRouter()
@@ -37,6 +39,7 @@ export default function CheckoutPage() {
   const [newInvoice, setNewInvoice] = useState<Invoice | null>(null)
   const [orderError, setOrderError] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<'payos' | 'sepay'>('sepay')
+  const { canRun } = useClientRateLimit(2500)
 
   const [email, setEmail] = useState(currentUser?.email || '')
   const [fullName, setFullName] = useState(currentUser?.fullName || '')
@@ -70,6 +73,7 @@ export default function CheckoutPage() {
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!canRun()) return
     setLoading(true)
     setOrderError('')
 
@@ -161,31 +165,20 @@ export default function CheckoutPage() {
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="text-center max-w-md"
+            className="w-full max-w-md"
           >
-            <CheckCircle2 size={80} className="text-green-500 mx-auto mb-6" />
-            <h1 className="text-4xl font-bold text-white mb-2">{t('checkout.confirmed', language)}</h1>
-            <p className="text-gray-400 mb-8">{t('checkout.confirmedDesc', language)}</p>
-            <div className="glass-dark rounded-2xl p-6 border border-white/10 mb-6 text-left space-y-3">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-400">{t('checkout.orderId', language)}</span>
-                <span className="text-white font-mono">{newInvoice.invoiceNumber || newInvoice.id}</span>
+            <PaymentSuccessView language={language} active>
+              <div className="glass-dark rounded-2xl p-6 border border-white/10 text-left space-y-3 w-full">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">{t('checkout.orderId', language)}</span>
+                  <span className="text-white font-mono">{newInvoice.invoiceNumber || newInvoice.id}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">{t('checkout.amount', language)}</span>
+                  <span className="text-white font-bold">{formatCurrency(newInvoice.totalAmount)}</span>
+                </div>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-400">{t('checkout.amount', language)}</span>
-                <span className="text-white font-bold">{formatCurrency(newInvoice.totalAmount)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-400">{t('checkout.method', language)}</span>
-                <span className="text-white">{t('checkout.payos', language)}</span>
-              </div>
-            </div>
-            <Link href="/my-accounts" className="block btn-primary-red py-3 mb-3">
-              {t('checkout.viewAccounts', language)}
-            </Link>
-            <Link href="/marketplace" className="block text-gray-400 hover:text-white">
-              {t('checkout.continueShop', language)}
-            </Link>
+            </PaymentSuccessView>
           </motion.div>
         </section>
       </AppLayout>

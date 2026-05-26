@@ -186,8 +186,11 @@ export default function Home() {
             className="text-center mb-16"
             {...fadeInUp}
           >
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-              {t('home.whyTitle', language)} <span className="text-netflix-red">NetflixHub</span>?
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">
+              {t('home.whyTitle', language)}{' '}
+              <span className="text-netflix-red">Netflix</span>
+              <span className="text-white">Hub</span>
+              <span className="text-netflix-red">?</span>
             </h2>
             <p className="text-gray-400 text-lg">{t('home.whySubtitle', language)}</p>
           </motion.div>

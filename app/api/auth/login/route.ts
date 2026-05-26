@@ -2,7 +2,12 @@ import { NextResponse } from 'next/server'
 import { authenticateUser } from '@/lib/auth/session'
 import { signSession, setSessionOnResponse } from '@/lib/auth/session-cookie'
 
+import { guardApiRequest } from '@/lib/security/request-guard'
+
 export async function POST(request: Request) {
+  const denied = await guardApiRequest(request, { skipOriginCheck: false })
+  if (denied) return denied
+
   try {
     const { email, password } = await request.json()
     if (!email || !password) {

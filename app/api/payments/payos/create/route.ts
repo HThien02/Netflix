@@ -14,15 +14,30 @@ import { isDemoCheckoutAllowed } from '@/lib/payments/demo-checkout'
 import { getPayosManualTransferHint } from '@/lib/payos/transfer-fallback'
 import { getSiteUrl } from '@/lib/site'
 import type { Cart } from '@/lib/types'
+import {
+  getSessionOrNull,
+  guardApiRequest,
+} from '@/lib/security/request-guard'
 
 export async function POST(request: Request) {
+  const denied = await guardApiRequest(request, {
+    auth: 'session',
+    skipRateLimit: true,
+  })
+  if (denied) return denied
+
+  const session = getSessionOrNull(request)
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   try {
     const body = await request.json()
     const cart = body.cart as Cart
-    const userId = body.userId as string
+    const userId = session.userId
     const language = (body.language as string) || 'vi'
 
-    if (!cart?.items?.length || !userId) {
+    if (!cart?.items?.length) {
       return NextResponse.json({ error: 'Invalid cart' }, { status: 400 })
     }
 

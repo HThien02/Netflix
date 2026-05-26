@@ -2,8 +2,22 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendPaymentSuccessEmail } from '@/lib/email/send'
 import { formatCurrency } from '@/lib/utils/format'
+import {
+  getSessionOrNull,
+  guardApiRequest,
+} from '@/lib/security/request-guard'
+import { verifyCronSecret } from '@/lib/security/api-auth'
 
 export async function POST(request: Request) {
+  if (!verifyCronSecret(request)) {
+    const denied = await guardApiRequest(request, { auth: 'admin' })
+    if (denied) return denied
+    const session = getSessionOrNull(request)
+    if (!session || session.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+  }
+
   try {
     const { userId, invoiceNumber, total, productNames, language = 'vi' } =
       await request.json()
@@ -29,12 +43,15 @@ export async function POST(request: Request) {
       user.full_name,
       lang,
       invoiceNumber,
-      formatCurrency(Number(total) || 0),
-      productNames || [],
+      formatCurrency(total),
+      productNames,
     )
 
     return NextResponse.json({ ok: true })
-  } catch {
-    return NextResponse.json({ error: 'Server error' }, { status: 500 })
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'Email failed' },
+      { status: 500 },
+    )
   }
 }

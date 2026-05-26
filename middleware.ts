@@ -1,5 +1,11 @@
 import { shouldForwardOAuthQueryToCallback } from '@/lib/auth/oauth-query'
 import { updateSession } from '@/lib/supabase/proxy'
+import { applySecurityHeaders } from '@/lib/security/headers'
+import { isAllowedApiOrigin } from '@/lib/security/origin'
+import {
+  checkApiRateLimit,
+  rateLimitHeaders,
+} from '@/lib/security/rate-limit'
 import { type NextRequest, NextResponse } from 'next/server'
 
 const WEBHOOK_PATHS = new Set([
@@ -47,23 +53,51 @@ function redirectOAuthCodeToCallback(request: NextRequest): NextResponse | null 
   return NextResponse.redirect(url)
 }
 
+function guardApiMiddleware(request: NextRequest): NextResponse | null {
+  const path = normalizePath(request.nextUrl.pathname)
+  if (!path.startsWith('/api')) return null
+  if (WEBHOOK_PATHS.has(path)) return null
+  if (path.startsWith('/api/cron/')) return null
+
+  if (!isAllowedApiOrigin(request)) {
+    return applySecurityHeaders(
+      NextResponse.json({ error: 'Invalid origin' }, { status: 403 }),
+    )
+  }
+
+  const rl = checkApiRateLimit(request)
+  if (!rl.ok) {
+    return applySecurityHeaders(
+      NextResponse.json(
+        { error: 'Too many requests' },
+        { status: 429, headers: rateLimitHeaders(rl) },
+      ),
+    )
+  }
+
+  return null
+}
+
 export async function middleware(request: NextRequest) {
   const path = normalizePath(request.nextUrl.pathname)
 
   if (WEBHOOK_PATHS.has(path)) {
-    return handlePaymentWebhook(request)
+    return applySecurityHeaders(handlePaymentWebhook(request))
   }
+
+  const apiBlocked = guardApiMiddleware(request)
+  if (apiBlocked) return apiBlocked
 
   const oauthRedirect = redirectOAuthCodeToCallback(request)
   if (oauthRedirect) {
-    return oauthRedirect
+    return applySecurityHeaders(oauthRedirect)
   }
 
   try {
-    return await updateSession(request)
+    return applySecurityHeaders(await updateSession(request))
   } catch (err) {
     console.error('[middleware] updateSession failed', err)
-    return NextResponse.next()
+    return applySecurityHeaders(NextResponse.next())
   }
 }
 

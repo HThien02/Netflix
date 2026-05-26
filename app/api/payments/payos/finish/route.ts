@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { getSessionFromRequest } from '@/lib/auth/session-cookie'
 import {
   confirmPayosPaid,
   formatPayosDescription,
@@ -17,12 +16,24 @@ import { isPayosOrderAlreadyCompleted, loadPayosPendingFromDb } from '@/lib/payo
 import { isSupabaseConfigured } from '@/lib/auth/login'
 import { completeOrderServer } from '@/lib/orders/complete-order'
 
+import {
+  getSessionOrNull,
+  guardApiRequest,
+} from '@/lib/security/request-guard'
+
 export async function POST(request: Request) {
+  const denied = await guardApiRequest(request, {
+    auth: 'session',
+    skipRateLimit: true,
+  })
+  if (denied) return denied
+
+  const session = getSessionOrNull(request)
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   try {
-    const session = getSessionFromRequest(request)
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
 
     const body = await request.json()
     const orderCode = Number(body.orderCode)
@@ -39,10 +50,8 @@ export async function POST(request: Request) {
       const res = NextResponse.json({
         alreadyCompleted: true,
         orderCode,
-        message:
-          language === 'vi'
-            ? 'Đơn đã hoàn tất (webhook hoặc lần trước). Vào Tài khoản của tôi.'
-            : 'Order already completed. Go to My accounts.',
+        invoice: null,
+        accounts: [],
       })
       clearPayosPendingCookie(res)
       return res

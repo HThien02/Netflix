@@ -5,6 +5,9 @@ export const translations = {
     // Navigation
     "nav.home": "Home",
     "nav.marketplace": "Marketplace",
+    "marketplace.pageInfo": "Page {page} of {total} · {count} plans",
+    "marketplace.prevPage": "Previous",
+    "marketplace.nextPage": "Next",
     "nav.dashboard": "Dashboard",
     "nav.subscriptions": "My Subscriptions",
     "nav.myAccounts": "My Accounts",
@@ -143,6 +146,12 @@ export const translations = {
     "footer.tos": "Terms of Service",
     "footer.cookies": "Cookie Policy",
     "footer.rights": "All rights reserved.",
+    "merchants.merchant1.name": "Premium Content Co",
+    "merchants.merchant1.desc":
+      "Your ultimate destination for premium streaming content",
+    "merchants.merchant2.name": "Global Streaming Network",
+    "merchants.merchant2.desc":
+      "International streaming services with 24/7 support",
     "auth.email": "Email",
     "auth.password": "Password",
     "auth.fullName": "Full Name",
@@ -195,6 +204,7 @@ export const translations = {
     "checkout.confirmed": "Order Confirmed!",
     "checkout.confirmedDesc":
       "Your streaming login details are saved under My Accounts.",
+    "checkout.redirectCountdown": "Redirecting to your accounts in {s}s…",
     "checkout.viewAccounts": "View My Accounts",
     "checkout.continueShop": "Continue Shopping",
     "checkout.orderId": "Order ID",
@@ -425,7 +435,7 @@ export const translations = {
   vi: {
     // Navigation
     "nav.home": "Trang chủ",
-    "nav.marketplace": "Marketplace",
+    "nav.marketplace": "Chọn gói",
     "nav.dashboard": "Bảng điều khiển",
     "nav.subscriptions": "Đăng ký của tôi",
     "nav.myAccounts": "Tài khoản của tôi",
@@ -441,8 +451,18 @@ export const translations = {
       "Quản lý, đăng ký và tận hưởng nội dung cao cấp từ các nhà cung cấp tốt nhất",
     "hero.cta": "Khám phá ngay",
 
+    "merchants.merchant1.name": "Công ty Nội dung Cao cấp",
+    "merchants.merchant1.desc":
+      "Điểm đến hàng đầu cho nội dung streaming cao cấp",
+    "merchants.merchant2.name": "Mạng Streaming Toàn cầu",
+    "merchants.merchant2.desc":
+      "Dịch vụ streaming quốc tế, hỗ trợ 24/7",
+    "marketplace.pageInfo": "Trang {page}/{total} · {count} gói",
+    "marketplace.prevPage": "Trang trước",
+    "marketplace.nextPage": "Trang sau",
+
     // Marketplace
-    "marketplace.title": "Khám phá Gói",
+    "marketplace.title": "Chọn gói",
     "marketplace.subtitle":
       "Chọn từ bộ sưu tập các gói đăng ký cao cấp được lựa chọn của chúng tôi",
     "marketplace.search": "Tìm kiếm các gói đăng ký...",
@@ -612,6 +632,7 @@ export const translations = {
     "checkout.confirmed": "Thanh toán thành công!",
     "checkout.confirmedDesc":
       "Thông tin đăng nhập đã lưu tại Tài khoản của tôi.",
+    "checkout.redirectCountdown": "Chuyển tới tài khoản đã mua sau {s} giây…",
     "checkout.viewAccounts": "Xem tài khoản của tôi",
     "checkout.continueShop": "Tiếp tục mua sắm",
     "checkout.orderId": "Mã đơn",
@@ -625,7 +646,7 @@ export const translations = {
     "checkout.card": "Thẻ tín dụng",
     "checkout.wallet": "Ví điện tử",
     "checkout.invalidSession": "Phiên thanh toán không hợp lệ",
-    "checkout.backMarket": "Về Marketplace",
+    "checkout.backMarket": "Về Chọn gói",
     "checkout.backCart": "Về giỏ hàng",
     "checkout.product": "Sản phẩm",
     "checkout.emailSent": "Email xác nhận đã gửi tới",
@@ -656,7 +677,7 @@ export const translations = {
     "myAccounts.expires": "Hết hạn",
     "myAccounts.daysLeft": "ngày còn lại",
     "myAccounts.expired": "Đã hết hạn",
-    "myAccounts.expiredHint": "Gói đã hết hạn. Mua lại tại Marketplace.",
+    "myAccounts.expiredHint": "Gói đã hết hạn. Mua lại tại Chọn gói.",
     "db.connected": "DB đã kết nối",
     "db.error": "Lỗi DB",
     "db.notConfigured": "Chưa cấu hình DB",
@@ -765,7 +786,7 @@ export const translations = {
     "productDetail.viewDetail": "Xem chi tiết",
     "productDetail.fromPrice": "Từ",
     "productDetail.notFound": "Không tìm thấy sản phẩm",
-    "productDetail.backMarketplace": "Quay lại Marketplace",
+    "productDetail.backMarketplace": "Quay lại Chọn gói",
     "productDetail.soldBy": "Bán bởi",
     "productDetail.price": "Tổng tiền",
     "productDetail.rentalType": "Loại thuê",

@@ -29,7 +29,7 @@ const FALLBACK_REASONS = [
 export async function GET(request: Request) {
   try {
     const adminUserId = request.headers.get('x-admin-user-id')
-    await requireAdminUser(adminUserId)
+    await requireAdminUser(adminUserId, request)
     if (!isSupabaseConfigured()) {
       return NextResponse.json({ reasons: FALLBACK_REASONS })
     }
@@ -50,7 +50,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    await requireAdminUser(body.adminUserId)
+    await requireAdminUser(body.adminUserId, request)
     if (!isSupabaseConfigured()) {
       return NextResponse.json({ error: 'Supabase required' }, { status: 400 })
     }

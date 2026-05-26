@@ -35,8 +35,12 @@ export async function completePurchase(
   const invoice = normalizeInvoice(data.invoice)
   const accounts = (data.accounts as PurchasedAccount[]).map(normalizeAccount)
 
-  savePurchasedAccountsLocal(userId, accounts)
-  saveInvoicesLocal(userId, invoice)
+  if (invoice) saveInvoicesLocal(userId, invoice)
+  if (accounts.length) savePurchasedAccountsLocal(userId, accounts)
+
+  if (!invoice) {
+    throw new Error('Order completed but invoice missing')
+  }
 
   return {
     invoice,
@@ -45,7 +49,8 @@ export async function completePurchase(
   }
 }
 
-function normalizeInvoice(inv: Invoice): Invoice {
+function normalizeInvoice(inv: Invoice | null | undefined): Invoice | null {
+  if (!inv) return null
   return {
     ...inv,
     invoiceDate: new Date(inv.invoiceDate),
