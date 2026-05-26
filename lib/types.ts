@@ -72,7 +72,7 @@ export interface Invoice {
   taxAmount: number
   totalAmount: number
   status: 'pending' | 'paid' | 'failed' | 'refunded'
-  paymentMethod: 'payos' | 'credit_card' | 'wallet'
+  paymentMethod: 'payos' | 'sepay' | 'credit_card' | 'wallet'
   invoiceDate: Date
   dueDate: Date
   paidDate?: Date
@@ -173,7 +173,7 @@ export interface Transaction {
   invoiceId: string
   amount: number
   type: 'debit' | 'credit'
-  method: 'payos' | 'credit_card' | 'wallet' | 'refund'
+  method: 'payos' | 'sepay' | 'credit_card' | 'wallet' | 'refund'
   status: 'pending' | 'completed' | 'failed'
   reference: string
   failureReason?: string

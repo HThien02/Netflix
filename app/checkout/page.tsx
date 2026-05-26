@@ -12,10 +12,11 @@ import { getLocalizedProductName } from '@/lib/products-i18n'
 import { planLabel } from '@/lib/plans'
 import type { PlanType } from '@/lib/plans'
 import { savePayosPendingCheckout } from '@/lib/payos/pending-checkout'
+import { saveSepayPendingCheckout } from '@/lib/sepay/pending-checkout'
 import { completePurchase } from '@/lib/orders/complete-purchase'
 import { Invoice } from '@/lib/types'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Smartphone, CheckCircle2 } from 'lucide-react'
+import { ArrowLeft, Smartphone, Building2, CheckCircle2 } from 'lucide-react'
 import confetti from 'canvas-confetti'
 
 export default function CheckoutPage() {
@@ -35,6 +36,7 @@ export default function CheckoutPage() {
   const [orderPlaced, setOrderPlaced] = useState(false)
   const [newInvoice, setNewInvoice] = useState<Invoice | null>(null)
   const [orderError, setOrderError] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState<'payos' | 'sepay'>('payos')
 
   const [email, setEmail] = useState(currentUser?.email || '')
   const [fullName, setFullName] = useState(currentUser?.fullName || '')
@@ -74,6 +76,56 @@ export default function CheckoutPage() {
     const productNames = buildProductNames()
 
     try {
+      if (paymentMethod === 'sepay') {
+        const sepayRes = await fetch('/api/payments/sepay/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({
+            cart,
+            userId: currentUser.id,
+            language,
+            productNames,
+          }),
+        })
+        const sepayData = await sepayRes.json()
+
+        if (sepayRes.ok && sepayData.paymentCode) {
+          saveSepayPendingCheckout(
+            cart,
+            productNames,
+            sepayData.paymentCode,
+            sepayData.amountVnd,
+            { qrImageUrl: sepayData.qrImageUrl, bank: sepayData.bank },
+          )
+          router.push(sepayData.checkoutPath || `/checkout/sepay?code=${sepayData.paymentCode}`)
+          return
+        }
+
+        if (sepayData.demo) {
+          const { invoice, accounts } = await completePurchase(
+            currentUser.id,
+            cart,
+            productNames,
+            'sepay',
+            {
+              userEmail: currentUser.email,
+              userName: currentUser.fullName,
+              language,
+            },
+          )
+          setNewInvoice(invoice)
+          setUserInvoices([invoice, ...userInvoices])
+          setPurchasedAccounts([...accounts, ...purchasedAccounts])
+          setOrderPlaced(true)
+          setCart(null)
+          confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } })
+          return
+        }
+
+        throw new Error(sepayData.error || t('checkout.orderFailed', language))
+      }
+
       const payosRes = await fetch('/api/payments/payos/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -237,13 +289,50 @@ export default function CheckoutPage() {
                 transition={{ delay: 0.1 }}
                 className="glass-dark rounded-2xl p-6 border border-netflix-red/30"
               >
-                <h2 className="text-xl font-bold text-white mb-2">{t('checkout.paymentMethod', language)}</h2>
-                <div className="flex items-center gap-3 p-4 rounded-lg bg-netflix-red/10 border border-netflix-red/40">
-                  <Smartphone size={28} className="text-netflix-red" />
-                  <div>
-                    <p className="text-white font-semibold">{t('checkout.payos', language)}</p>
-                    <p className="text-gray-400 text-sm">{t('checkout.payosDesc', language)}</p>
-                  </div>
+                <h2 className="text-xl font-bold text-white mb-4">{t('checkout.selectPayment', language)}</h2>
+                <div className="space-y-3">
+                  <label
+                    className={`flex items-center gap-3 p-4 rounded-lg cursor-pointer border transition-colors ${
+                      paymentMethod === 'payos'
+                        ? 'bg-netflix-red/10 border-netflix-red/40'
+                        : 'bg-black/20 border-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="payos"
+                      checked={paymentMethod === 'payos'}
+                      onChange={() => setPaymentMethod('payos')}
+                      className="accent-netflix-red"
+                    />
+                    <Smartphone size={28} className="text-netflix-red shrink-0" />
+                    <div>
+                      <p className="text-white font-semibold">{t('checkout.payos', language)}</p>
+                      <p className="text-gray-400 text-sm">{t('checkout.payosDesc', language)}</p>
+                    </div>
+                  </label>
+                  <label
+                    className={`flex items-center gap-3 p-4 rounded-lg cursor-pointer border transition-colors ${
+                      paymentMethod === 'sepay'
+                        ? 'bg-netflix-red/10 border-netflix-red/40'
+                        : 'bg-black/20 border-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="sepay"
+                      checked={paymentMethod === 'sepay'}
+                      onChange={() => setPaymentMethod('sepay')}
+                      className="accent-netflix-red"
+                    />
+                    <Building2 size={28} className="text-netflix-red shrink-0" />
+                    <div>
+                      <p className="text-white font-semibold">{t('checkout.sepay', language)}</p>
+                      <p className="text-gray-400 text-sm">{t('checkout.sepayDesc', language)}</p>
+                    </div>
+                  </label>
                 </div>
               </motion.div>
             </form>
@@ -298,7 +387,11 @@ export default function CheckoutPage() {
                 disabled={loading}
                 className="w-full btn-primary-red py-3 disabled:opacity-50"
               >
-                {loading ? t('checkout.processing', language) : t('checkout.payWithPayos', language)}
+                {loading
+                  ? t('checkout.processing', language)
+                  : paymentMethod === 'sepay'
+                    ? t('checkout.payWithSepay', language)
+                    : t('checkout.payWithPayos', language)}
               </button>
               <p className="text-gray-500 text-xs text-center mt-4">{t('checkout.payosSecure', language)}</p>
             </motion.div>

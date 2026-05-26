@@ -22,7 +22,7 @@ export async function POST(request: Request) {
       language?: Lang
       cart: Cart
       productNames: Record<string, string>
-      paymentMethod: 'payos' | 'credit_card' | 'wallet'
+      paymentMethod: 'payos' | 'sepay' | 'credit_card' | 'wallet'
     }
 
     if (!userId || !cart?.items?.length) {
