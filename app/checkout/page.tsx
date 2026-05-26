@@ -96,6 +96,7 @@ export default function CheckoutPage() {
         saveSepayPaymentDetails(sepayData.paymentCode, sepayData.amountVnd, {
           qrImageUrl: sepayData.qrImageUrl,
           bank: sepayData.bank,
+          transferDescription: sepayData.transferDescription,
         })
         window.location.href = `/checkout/sepay?code=${encodeURIComponent(sepayData.paymentCode)}`
         return

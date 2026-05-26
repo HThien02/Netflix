@@ -5,11 +5,12 @@ import { usePathname } from 'next/navigation'
 import { AppLayout } from '@/components/app-layout'
 import { useApp } from '@/lib/context'
 import { t } from '@/lib/translations'
-import { Database, Ban, ShieldAlert, LayoutDashboard, Package } from 'lucide-react'
+import { Database, Ban, ShieldAlert, LayoutDashboard, Package, Landmark } from 'lucide-react'
 
 const links = [
   { href: '/admin/dashboard', labelKey: 'admin.dashboard', icon: LayoutDashboard },
   { href: '/admin/products', labelKey: 'admin.productsManage', icon: Package },
+  { href: '/admin/sepay', labelKey: 'admin.sepay', icon: Landmark },
   { href: '/admin/pool', labelKey: 'admin.pool', icon: Database },
   { href: '/admin/rentals', labelKey: 'admin.rentals', icon: Ban },
   { href: '/admin/ban-reasons', labelKey: 'admin.banReasons', icon: ShieldAlert },

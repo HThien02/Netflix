@@ -6,6 +6,7 @@ export type SepayClientPending = {
   cart: Cart
   productNames: Record<string, string>
   paymentCode?: string
+  transferDescription?: string
   amountVnd?: number
   qrImageUrl?: string
   bank?: {
@@ -29,7 +30,7 @@ export function saveSepayPendingCheckout(cart: Cart, productNames: Record<string
 export function saveSepayPaymentDetails(
   paymentCode: string,
   amountVnd: number,
-  extras?: Pick<SepayClientPending, 'qrImageUrl' | 'bank'>,
+  extras?: Pick<SepayClientPending, 'qrImageUrl' | 'bank' | 'transferDescription'>,
 ) {
   const existing = loadSepayPendingCheckout()
   if (!existing?.cart) return

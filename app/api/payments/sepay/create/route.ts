@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import {
-  buildVietQrImageUrl,
+  buildSepayQrImageUrl,
+  buildSepayTransferDescription,
   generateSepayPaymentCode,
   getSepayBankDisplay,
   isSepayConfigured,
@@ -53,7 +54,7 @@ export async function POST(request: Request) {
     const paymentCode = generateSepayPaymentCode()
     await reopenSepayPendingIfNoWebhook(paymentCode)
     const bank = getSepayBankDisplay()
-    const qrImageUrl = buildVietQrImageUrl(amountVnd, paymentCode)
+    const qrImageUrl = buildSepayQrImageUrl(amountVnd, paymentCode)
     const lang = language === 'en' ? 'en' : 'vi'
 
     const pendingPayload = {
@@ -74,8 +75,10 @@ export async function POST(request: Request) {
       )
     }
 
+    const transferDescription = buildSepayTransferDescription(paymentCode)
     const res = NextResponse.json({
       paymentCode,
+      transferDescription,
       amountVnd,
       qrImageUrl,
       bank,

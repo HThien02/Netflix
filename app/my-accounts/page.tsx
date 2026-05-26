@@ -20,6 +20,7 @@ import {
 import type { PurchasedAccount } from '@/lib/types'
 import { planLabel } from '@/lib/plans'
 import type { PlanType } from '@/lib/plans'
+import { UserSepayStats } from '@/components/sepay/user-sepay-stats'
 
 function daysLeft(expiresAt: Date) {
   return Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
@@ -285,6 +286,7 @@ export default function MyAccountsPage() {
 
           {tab === 'history' && (
             <div className="space-y-3">
+              <UserSepayStats />
               {userInvoices.length > 0 ? (
                 userInvoices.map((inv) => (
                   <div

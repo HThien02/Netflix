@@ -142,6 +142,33 @@ export async function isSepayWebhookProcessed(sepayTransactionId: number): Promi
   return Boolean(data)
 }
 
+export type SepayUserOrderRow = {
+  paymentCode: string
+  amountVnd: number
+  status: string
+  sepayTransactionId: number | null
+  createdAt: string
+}
+
+export async function listSepayOrdersByUser(userId: string): Promise<SepayUserOrderRow[]> {
+  if (!isSupabaseConfigured() || !hasSupabaseServiceRole()) return []
+  const supabase = createAdminClient()
+  const { data } = await supabase
+    .from('sepay_pending_orders')
+    .select('payment_code, amount_vnd, status, sepay_transaction_id, created_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(100)
+
+  return (data || []).map((row) => ({
+    paymentCode: row.payment_code,
+    amountVnd: row.amount_vnd,
+    status: row.status,
+    sepayTransactionId: row.sepay_transaction_id ?? null,
+    createdAt: row.created_at,
+  }))
+}
+
 export async function markSepayWebhookProcessed(
   sepayTransactionId: number,
   paymentCode: string,

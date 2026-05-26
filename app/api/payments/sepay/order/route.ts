@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { getSessionFromRequest } from '@/lib/auth/session-cookie'
 import {
-  buildVietQrImageUrl,
+  buildSepayQrImageUrl,
+  buildSepayTransferDescription,
   getSepayBankDisplay,
   isSepayConfigured,
 } from '@/lib/sepay/client'
@@ -55,8 +56,9 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     paymentCode: code,
+    transferDescription: buildSepayTransferDescription(code),
     amountVnd: pending.amountVnd,
-    qrImageUrl: buildVietQrImageUrl(pending.amountVnd, code),
+    qrImageUrl: buildSepayQrImageUrl(pending.amountVnd, code),
     bank: getSepayBankDisplay(),
     paid: false,
   })

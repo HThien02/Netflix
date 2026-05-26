@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { getSessionFromRequest } from '@/lib/auth/session-cookie'
+import { isSepayApiConfigured } from '@/lib/sepay/api-client'
 import { getSepayOrderStatus, isSepayOrderAlreadyCompleted } from '@/lib/sepay/pending-store'
+import { tryCompleteSepayFromApi } from '@/lib/sepay/sync-from-api'
 
 export async function GET(request: Request) {
   const session = getSessionFromRequest(request)
@@ -13,15 +15,26 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Missing code' }, { status: 400 })
   }
 
-  const row = await getSepayOrderStatus(code)
-  const paid = await isSepayOrderAlreadyCompleted(code)
+  let row = await getSepayOrderStatus(code)
+  let paid = await isSepayOrderAlreadyCompleted(code)
 
-  if (paid && row?.sepayTransactionId) {
-    return NextResponse.json({
-      paid: true,
-      paymentCode: code,
-      sepayTransactionId: row.sepayTransactionId,
-    })
+  if (!paid) {
+    const synced = await tryCompleteSepayFromApi(code)
+    if (synced.completed) {
+      row = await getSepayOrderStatus(code)
+      paid = true
+    }
+  }
+
+  if (paid) {
+    const sepayTransactionId = row?.sepayTransactionId
+    if (sepayTransactionId != null) {
+      return NextResponse.json({
+        paid: true,
+        paymentCode: code,
+        sepayTransactionId,
+      })
+    }
   }
 
   return NextResponse.json(
@@ -32,7 +45,10 @@ export async function GET(request: Request) {
       hintVi:
         row?.status === 'completed'
           ? 'Đơn đánh dấu hoàn tất nhưng chưa có mã giao dịch SePay — chưa CK thật. Chuyển khoản đúng mã và số tiền.'
-          : 'Chưa nhận được CK hoặc SePay chưa gửi webhook. Kiểm tra đúng số tiền và nội dung CK, đợi 1–5 phút.',
+          : isSepayApiConfigured()
+            ? 'Chưa thấy CK khớp mã và số tiền trên SePay. Kiểm tra nội dung CK, đợi 1–5 phút.'
+            : 'Chưa nhận webhook SePay. Thêm SEPAY_API_TOKEN (my.sepay.vn → API) hoặc cấu hình webhook đúng URL trên dashboard.',
+      sepayApiConfigured: isSepayApiConfigured(),
     },
     { status: 402 },
   )

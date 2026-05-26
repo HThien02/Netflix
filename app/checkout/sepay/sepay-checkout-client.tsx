@@ -17,6 +17,7 @@ import confetti from 'canvas-confetti'
 
 type SepayDisplay = {
   paymentCode: string
+  transferDescription: string
   amountVnd: number
   qrImageUrl: string
   bank: {
@@ -37,9 +38,11 @@ export function SepayCheckoutClient() {
   const [display, setDisplay] = useState<SepayDisplay | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [paymentHint, setPaymentHint] = useState('')
   const [paid, setPaid] = useState(false)
   const [alreadyPaid, setAlreadyPaid] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [confirming, setConfirming] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const checkPaid = useCallback(async (code: string): Promise<boolean> => {
@@ -87,6 +90,8 @@ export function SepayCheckoutClient() {
         ) {
           setDisplay({
             paymentCode: codeParam,
+            transferDescription:
+              stored.transferDescription || `Thanh toan don hang ${codeParam}`,
             amountVnd: stored.amountVnd,
             qrImageUrl: stored.qrImageUrl,
             bank: stored.bank,
@@ -120,28 +125,58 @@ export function SepayCheckoutClient() {
     }
 
     void init()
-  }, [authReady, currentUser, codeParam, language, router, handlePaid])
+  }, [authReady, currentUser, codeParam, language, router])
 
-  // Chỉ poll khi user bấm "Tôi đã chuyển" — không tự báo success
+  /** Tự poll — chỉ success khi webhook SePay đã ghi sepay_transaction_id */
+  useEffect(() => {
+    if (!display?.paymentCode || paid || alreadyPaid) return
+
+    const code = display.paymentCode
+    let cancelled = false
+
+    const tick = async () => {
+      if (cancelled) return
+      setConfirming(true)
+      const ok = await checkPaid(code)
+      if (cancelled) return
+      if (ok) {
+        await handlePaid()
+        return
+      }
+      setConfirming(false)
+    }
+
+    void tick()
+    pollRef.current = setInterval(() => void tick(), 4000)
+
+    return () => {
+      cancelled = true
+      if (pollRef.current) clearInterval(pollRef.current)
+      pollRef.current = null
+    }
+  }, [display?.paymentCode, paid, alreadyPaid, checkPaid, handlePaid])
 
   const copyCode = async () => {
-    if (!display?.paymentCode) return
-    await navigator.clipboard.writeText(display.paymentCode)
+    if (!display?.transferDescription) return
+    await navigator.clipboard.writeText(display.transferDescription)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
 
   const onManualCheck = async () => {
     if (!display?.paymentCode) return
+    setConfirming(true)
+    setPaymentHint('')
     const ok = await checkPaid(display.paymentCode)
     if (ok) {
       await handlePaid()
       return
     }
-    setError(
+    setConfirming(false)
+    setPaymentHint(
       language === 'vi'
-        ? 'SePay chưa ghi nhận giao dịch. Kiểm tra đúng số tiền + nội dung CK, đợi 1–5 phút rồi thử lại.'
-        : 'SePay has not recorded the transfer yet. Check amount and memo, wait 1–5 minutes.',
+        ? 'SePay chưa ghi nhận giao dịch. Kiểm tra đúng số tiền + nội dung CK, đợi 1–5 phút — trang sẽ tự cập nhật.'
+        : 'SePay has not recorded the transfer yet. Check amount and memo — this page will update automatically.',
     )
   }
 
@@ -243,7 +278,10 @@ export function SepayCheckoutClient() {
             <div className="bg-netflix-red/10 border border-netflix-red/40 rounded-xl p-4">
               <p className="text-gray-400 text-xs mb-1">{t('checkout.sepayTransferMemo', language)}</p>
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xl font-mono font-bold text-netflix-red">{display.paymentCode}</span>
+                <span className="text-sm font-mono font-bold text-netflix-red break-all">
+                  {display.transferDescription}
+                </span>
+                <p className="text-gray-500 text-xs mt-1 font-mono">{display.paymentCode}</p>
                 <button
                   type="button"
                   onClick={() => void copyCode()}
@@ -255,11 +293,15 @@ export function SepayCheckoutClient() {
               </div>
             </div>
 
-            <p className="text-gray-500 text-xs">{t('checkout.sepayWaiting', language)}</p>
+            <div className="flex items-center justify-center gap-2 text-gray-400 text-sm py-1">
+              {confirming && <Loader2 size={16} className="animate-spin text-netflix-red shrink-0" />}
+              <p className="text-center">{t('checkout.sepayWaiting', language)}</p>
+            </div>
+            {paymentHint && <p className="text-amber-400 text-xs text-center">{paymentHint}</p>}
             <button
               type="button"
               onClick={() => void onManualCheck()}
-              className="w-full btn-primary-red py-3 rounded-lg"
+              className="w-full border border-white/20 text-gray-300 hover:text-white hover:border-white/40 py-2.5 rounded-lg text-sm transition-colors"
             >
               {t('checkout.sepayCheckPaid', language)}
             </button>

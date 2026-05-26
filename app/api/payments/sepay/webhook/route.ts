@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 import { tryCompletePayosFromBankWebhook } from '@/lib/payos/complete-from-bank-webhook'
+import { extractPayosOrderCodeFromTransfer } from '@/lib/payos/reconcile-transfer'
 import {
   amountMatchesOrder,
   extractPaymentCodeFromWebhook,
+  getSepayPaymentPrefix,
 } from '@/lib/sepay/client'
 import { completeSepayOrderFromPending } from '@/lib/sepay/complete-sepay-order'
 import { verifySepayWebhookRequest } from '@/lib/sepay/signature'
@@ -58,7 +60,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, message: 'Missing transaction id' }, { status: 400 })
   }
 
-  const paymentCode = extractPaymentCodeFromWebhook(payload)
+  const paymentCode = extractPaymentCodeFromWebhook({
+    code: payload.code,
+    content: payload.content,
+    description: payload.description,
+  })
 
   if (await isSepayWebhookProcessed(txId)) {
     if (paymentCode && (await isSepayOrderAlreadyCompleted(paymentCode))) {
@@ -85,8 +91,33 @@ export async function POST(request: Request) {
         via: 'sepay_bank_webhook',
       })
     }
-    console.info('[sepay webhook] no payment code in payload', { id: txId, code: payload.code, payosResult })
-    return NextResponse.json({ success: true, skipped: true, reason: 'no_payment_code' })
+    const payosOrderCode = extractPayosOrderCodeFromTransfer({
+      code: payload.code,
+      content: payload.content,
+    })
+    const prefix = getSepayPaymentPrefix()
+    console.info('[sepay webhook] no payment code in payload', {
+      id: txId,
+      code: payload.code,
+      content: payload.content?.slice(0, 80),
+      payosOrderCode,
+      payosResult,
+    })
+    return NextResponse.json({
+      success: true,
+      skipped: true,
+      reason: 'no_payment_code',
+      hintVi:
+        `Webhook nhận được nhưng không tìm thấy mã thanh toán (tiền tố ${prefix}, ví dụ ${prefix}A1B2C3D4). ` +
+        'Giao dịch thử nghiệm SePay ("Giao dich thu nghiem...") không có mã — không khớp đơn. ' +
+        'Để thanh toán thật: checkout trên site → chuyển khoản đúng số tiền và ghi đúng mã CK vào nội dung. ' +
+        'PayOS: nội dung cần có orderCode 6–9 chữ số.',
+      expectedPrefix: prefix,
+      receivedCode: payload.code || null,
+      receivedContentPreview: String(payload.content || '').slice(0, 120) || null,
+      payosOrderCodeFound: payosOrderCode,
+      payosBridge: payosResult,
+    })
   }
 
   if (await isSepayOrderAlreadyCompleted(paymentCode)) {
