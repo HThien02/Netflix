@@ -14,6 +14,9 @@ import {
   markSepayWebhookProcessed,
 } from '@/lib/sepay/pending-store'
 
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
 export type SepayWebhookPayload = {
   id: number
   gateway?: string
