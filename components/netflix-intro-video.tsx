@@ -139,7 +139,7 @@ export function NetflixIntroVideo({
             e.stopPropagation()
             toggleMute()
           }}
-          className="absolute bottom-3 right-3 z-[3] p-2 rounded-full bg-black/60 hover:bg-black/80 text-white border border-white/20 opacity-0 group-hover:opacity-100 transition-opacity"
+          className="absolute bottom-3 right-3 z-[3] p-2.5 rounded-full bg-black/60 hover:bg-black/80 text-white border border-white/20 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
           aria-label="Toggle sound"
         >
           {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}

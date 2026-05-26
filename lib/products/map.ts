@@ -16,6 +16,7 @@ export type DbProductRow = {
   category?: string | null
   image_url?: string | null
   is_active?: boolean | null
+  coming_soon?: boolean | null
   created_at?: string
   updated_at?: string
 }
@@ -34,6 +35,7 @@ export function mapDbProductToApp(row: DbProductRow): Product {
     basePrice: Number(row.price) || 0,
     discountPercentage: discount > 0 ? discount : undefined,
     active: row.is_active !== false,
+    comingSoon: row.coming_soon === true,
     createdAt: row.created_at ? new Date(row.created_at) : new Date(),
     updatedAt: row.updated_at ? new Date(row.updated_at) : new Date(),
   }
@@ -50,6 +52,7 @@ export function productToDbPayload(body: Record<string, unknown>) {
     category: String(body.category || 'Streaming'),
     image_url: body.image_url != null ? String(body.image_url) : body.image != null ? String(body.image) : null,
     is_active: body.is_active !== false && body.active !== false,
+    coming_soon: body.coming_soon === true || body.comingSoon === true,
     max_screens: Number(body.max_screens) || 4,
     quality: body.quality != null ? String(body.quality) : '4K',
     duration_months: Number(body.duration_months) || 1,

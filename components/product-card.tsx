@@ -5,6 +5,7 @@ import { Product } from '@/lib/types'
 import { getLocalizedProduct } from '@/lib/products-i18n'
 import { formatCurrency, calculateDiscount } from '@/lib/utils/format'
 import { calcPriceBySlots } from '@/lib/inventory/pool'
+import { isProductPurchasable } from '@/lib/products/catalog'
 import { t, type Lang } from '@/lib/translations'
 import { motion } from 'framer-motion'
 import { Star, ChevronRight } from 'lucide-react'
@@ -20,6 +21,7 @@ export function ProductCard({ product, language = 'vi' }: ProductCardProps) {
     ? calculateDiscount(product.basePrice, product.discountPercentage)
     : product.basePrice
   const fromPrice = calcPriceBySlots(base, 1, 'monthly')
+  const purchasable = isProductPurchasable(product)
 
   return (
     <motion.div
@@ -38,7 +40,12 @@ export function ProductCard({ product, language = 'vi' }: ProductCardProps) {
             alt={product.name}
             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
           />
-          {product.discountPercentage && (
+          {product.comingSoon && (
+            <div className="absolute top-3 left-3 bg-amber-500/90 text-black px-3 py-1 rounded-full text-xs font-bold uppercase">
+              {t('marketplace.comingSoon', language)}
+            </div>
+          )}
+          {product.discountPercentage && purchasable && (
             <div className="absolute top-3 right-3 bg-netflix-red text-white px-3 py-1 rounded-full text-sm font-bold">
               -{product.discountPercentage}%
             </div>
@@ -69,11 +76,20 @@ export function ProductCard({ product, language = 'vi' }: ProductCardProps) {
 
           <div className="flex items-end justify-between gap-2 mt-auto pt-2 border-t border-white/10">
             <div>
-              <p className="text-xs text-gray-500">{t('productDetail.fromPrice', language)}</p>
-              <span className="text-xl font-bold text-white">{formatCurrency(fromPrice)}</span>
+              {purchasable ? (
+                <>
+                  <p className="text-xs text-gray-500">{t('productDetail.fromPrice', language)}</p>
+                  <span className="text-xl font-bold text-white">{formatCurrency(fromPrice)}</span>
+                </>
+              ) : (
+                <>
+                  <p className="text-xs text-gray-500">{t('marketplace.estimatedPrice', language)}</p>
+                  <span className="text-lg font-bold text-gray-400">{formatCurrency(base)}</span>
+                </>
+              )}
             </div>
             <span className="flex items-center gap-1 text-netflix-red text-sm font-semibold group-hover:gap-2 transition-all">
-              {t('productDetail.viewDetail', language)}
+              {purchasable ? t('productDetail.viewDetail', language) : t('marketplace.comingSoon', language)}
               <ChevronRight size={18} />
             </span>
           </div>

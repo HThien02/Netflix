@@ -7,6 +7,7 @@ import { useApp } from '@/lib/context'
 import { t } from '@/lib/translations'
 import { mockMerchants } from '@/lib/mock-data'
 import { useProducts } from '@/lib/hooks/use-products'
+import { isProductPurchasable } from '@/lib/products/catalog'
 import { motion } from 'framer-motion'
 import { Search, Grid3x3, List } from 'lucide-react'
 
@@ -18,14 +19,20 @@ export default function MarketplacePage() {
   const [selectedMerchant, setSelectedMerchant] = useState<string>('all')
 
   const filteredProducts = useMemo(() => {
-    return products.filter((product) => {
-      const matchesSearch =
-        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.description.toLowerCase().includes(searchQuery.toLowerCase())
-      const matchesMerchant =
-        selectedMerchant === 'all' || product.merchantId === selectedMerchant
-      return matchesSearch && matchesMerchant
-    })
+    return products
+      .filter((product) => {
+        const matchesSearch =
+          product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          product.description.toLowerCase().includes(searchQuery.toLowerCase())
+        const matchesMerchant =
+          selectedMerchant === 'all' || product.merchantId === selectedMerchant
+        return matchesSearch && matchesMerchant
+      })
+      .sort((a, b) => {
+        const aOk = isProductPurchasable(a) ? 0 : 1
+        const bOk = isProductPurchasable(b) ? 0 : 1
+        return aOk - bOk || a.name.localeCompare(b.name)
+      })
   }, [searchQuery, selectedMerchant, products])
 
   return (

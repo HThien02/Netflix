@@ -12,6 +12,7 @@ import { useProducts } from '@/lib/hooks/use-products'
 import { getLocalizedProduct } from '@/lib/products-i18n'
 import { formatCurrency, calculateDiscount } from '@/lib/utils/format'
 import { calcPriceBySlots } from '@/lib/inventory/pool'
+import { isProductPurchasable } from '@/lib/products/catalog'
 import { motion } from 'framer-motion'
 import { ArrowLeft, Star, Check } from 'lucide-react'
 
@@ -79,7 +80,12 @@ export default function ProductDetailPage() {
                   alt={product.name}
                   className="w-full h-full object-cover"
                 />
-                {product.discountPercentage && (
+                {product.comingSoon && (
+                  <span className="absolute top-4 left-4 bg-amber-500 text-black px-3 py-1 rounded-full text-sm font-bold">
+                    {t('marketplace.comingSoon', language)}
+                  </span>
+                )}
+                {product.discountPercentage && isProductPurchasable(product) && (
                   <span className="absolute top-4 right-4 bg-netflix-red text-white px-3 py-1 rounded-full text-sm font-bold">
                     -{product.discountPercentage}%
                   </span>

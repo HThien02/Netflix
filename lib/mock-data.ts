@@ -1,4 +1,5 @@
 import { User, Product, Subscription, Invoice, Merchant, Coupon, SupportTicket, Transaction, InventoryAccount } from './types'
+import { PRODUCT_CATALOG } from '@/lib/products/catalog'
 import { v4 as uuidv4 } from 'uuid'
 
 // Mock Users
@@ -87,72 +88,7 @@ export const mockMerchants: Merchant[] = [
   },
 ]
 
-// Mock Products
-export const mockProducts: Product[] = [
-  {
-    id: 'prod-1',
-    merchantId: 'merchant-1',
-    name: 'Premium Plus',
-    description: '4K Ultra HD streaming, simultaneous screens, offline download',
-    image: 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=500&h=300&fit=crop',
-    category: 'streaming',
-    basePrice: 10_000,
-    discountPercentage: 10,
-    active: true,
-    createdAt: new Date('2024-01-01'),
-    updatedAt: new Date('2024-05-20'),
-  },
-  {
-    id: 'prod-2',
-    merchantId: 'merchant-1',
-    name: 'Standard HD',
-    description: '1080p HD streaming, 2 simultaneous screens',
-    image: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=500&h=300&fit=crop',
-    category: 'streaming',
-    basePrice: 10_000,
-    active: true,
-    createdAt: new Date('2024-01-01'),
-    updatedAt: new Date('2024-05-20'),
-  },
-  {
-    id: 'prod-3',
-    merchantId: 'merchant-1',
-    name: 'Basic',
-    description: '720p HD streaming, single screen',
-    image: 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=500&h=300&fit=crop',
-    category: 'streaming',
-    basePrice: 10_000,
-    discountPercentage: 15,
-    active: true,
-    createdAt: new Date('2024-01-01'),
-    updatedAt: new Date('2024-05-20'),
-  },
-  {
-    id: 'prod-4',
-    merchantId: 'merchant-2',
-    name: 'Global Plus',
-    description: 'Access to 10000+ international shows and movies',
-    image: 'https://images.unsplash.com/photo-1520764185298-1b434c919eba?w=500&h=300&fit=crop',
-    category: 'streaming',
-    basePrice: 10_000,
-    active: true,
-    createdAt: new Date('2024-02-01'),
-    updatedAt: new Date('2024-05-20'),
-  },
-  {
-    id: 'prod-5',
-    merchantId: 'merchant-2',
-    name: 'Family Bundle',
-    description: '6 profiles, parental controls, 4 simultaneous screens',
-    image: 'https://images.unsplash.com/photo-1522869635100-ce306256633a?w=500&h=300&fit=crop',
-    category: 'streaming',
-    basePrice: 10_000,
-    discountPercentage: 20,
-    active: true,
-    createdAt: new Date('2024-02-01'),
-    updatedAt: new Date('2024-05-20'),
-  },
-]
+export const mockProducts: Product[] = PRODUCT_CATALOG
 
 // Mock Subscriptions
 export const mockSubscriptions: Subscription[] = Array.from({ length: 45 }, (_, i) => {

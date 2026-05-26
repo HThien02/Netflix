@@ -14,7 +14,8 @@ import {
 } from '@/lib/plans'
 import { calculateDiscount, formatCurrency } from '@/lib/utils/format'
 import { t, type Lang } from '@/lib/translations'
-import { ShoppingCart } from 'lucide-react'
+import { ShoppingCart, Clock } from 'lucide-react'
+import { isProductPurchasable } from '@/lib/products/catalog'
 import { v4 as uuidv4 } from 'uuid'
 
 type Props = {
@@ -33,6 +34,7 @@ export function ProductPurchasePanel({
   onAddToCart,
 }: Props) {
   const router = useRouter()
+  const purchasable = isProductPurchasable(product)
   const [rentalMode, setRentalMode] = useState<'short' | 'long'>('long')
   const [planType, setPlanType] = useState<PlanType>('monthly')
   const [availableSlots, setAvailableSlots] = useState<number[]>([1, 2, 3, 4])
@@ -100,6 +102,24 @@ export function ProductPurchasePanel({
       updatedAt: new Date(),
     })
     router.push('/cart')
+  }
+
+  if (!purchasable) {
+    return (
+      <div className="glass-dark rounded-2xl p-6 md:p-8 border border-amber-500/30 bg-amber-950/20">
+        <div className="flex items-start gap-3">
+          <Clock className="text-amber-400 shrink-0 mt-0.5" size={28} />
+          <div>
+            <p className="text-amber-300 font-bold text-lg">{t('marketplace.comingSoon', language)}</p>
+            <p className="text-gray-400 text-sm mt-2">{t('marketplace.comingSoonDesc', language)}</p>
+            <p className="text-gray-500 text-xs mt-4">
+              {t('marketplace.estimatedPrice', language)}: {formatCurrency(product.basePrice)} /{' '}
+              {t('marketplace.monthly', language)}
+            </p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

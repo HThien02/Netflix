@@ -29,7 +29,7 @@ export default function Home() {
   return (
     <AppLayout>
       {/* Hero Section */}
-      <section className="relative h-screen flex items-center justify-center bg-gradient-to-br from-netflix-black via-netflix-dark-light to-netflix-black overflow-hidden">
+      <section className="relative min-h-screen flex items-center justify-center py-20 lg:py-0 lg:h-screen bg-gradient-to-br from-netflix-black via-netflix-dark-light to-netflix-black overflow-hidden">
         {/* Theme background */}
         <div className="absolute inset-0">
           <Image
@@ -53,7 +53,7 @@ export default function Home() {
               transition={{ duration: 0.8 }}
             >
               <motion.h1 
-                className="text-5xl md:text-6xl lg:text-7xl font-black text-white mb-6 leading-tight"
+                className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-white mb-6 leading-tight"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2, duration: 0.8 }}
@@ -114,22 +114,22 @@ export default function Home() {
               </motion.div>
             </motion.div>
 
-            {/* Right Visual */}
+            {/* Video + card — hiển thị cả mobile */}
             <motion.div
-              className="hidden lg:block"
-              initial={{ opacity: 0, scale: 0.8 }}
+              className="w-full max-w-md mx-auto lg:max-w-none mt-10 lg:mt-0"
+              initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.4, duration: 0.8 }}
             >
               <div className="relative">
                 {/* Main Card */}
                 <motion.div
-                  className="glass-dark-red-edge rounded-3xl p-8"
-                  animate={{ y: [0, 20, 0] }}
+                  className="glass-dark-red-edge rounded-3xl p-5 sm:p-8"
+                  animate={{ y: [0, 12, 0] }}
                   transition={{ duration: 4, repeat: Infinity }}
                 >
-                  <div className="space-y-6">
-                    <NetflixIntroVideo className="h-48 w-full" withSound />
+                  <div className="space-y-4 sm:space-y-6">
+                    <NetflixIntroVideo className="w-full aspect-video" withSound />
                     <div>
                       <h3 className="text-white font-bold text-lg">{t('hero.premiumPlus', language)}</h3>
                       <p className="text-gray-400 text-sm">{t('hero.premiumDesc', language)}</p>
@@ -143,7 +143,7 @@ export default function Home() {
 
                 {/* Floating Cards */}
                 <motion.div
-                  className="absolute -top-8 -right-8 glass-dark-red-edge-soft rounded-2xl p-6 w-64"
+                  className="absolute -top-8 -right-8 glass-dark-red-edge-soft rounded-2xl p-6 w-64 hidden lg:block"
                   animate={{ y: [0, -10, 0] }}
                   transition={{ duration: 3, repeat: Infinity, delay: 0.5 }}
                 >
@@ -159,7 +159,7 @@ export default function Home() {
                 </motion.div>
 
                 <motion.div
-                  className="absolute -bottom-8 -left-8 glass-dark-red-edge-soft rounded-2xl p-6 w-64"
+                  className="absolute -bottom-8 -left-8 glass-dark-red-edge-soft rounded-2xl p-6 w-64 hidden lg:block"
                   animate={{ y: [0, 10, 0] }}
                   transition={{ duration: 3.5, repeat: Infinity, delay: 1 }}
                 >

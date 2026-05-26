@@ -39,6 +39,8 @@ export interface Product {
   basePrice: number
   discountPercentage?: number
   active: boolean
+  /** Hiển thị trên marketplace nhưng chưa cho mua */
+  comingSoon?: boolean
   createdAt: Date
   updatedAt: Date
 }
