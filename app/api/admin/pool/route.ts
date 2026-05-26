@@ -7,6 +7,8 @@ import {
   fetchActivePoolRentals,
   type SlotDetail,
 } from '@/lib/admin/pool-usage'
+import { adminPoolCreateSchema } from '@/lib/validation/admin'
+import { parseJsonBody } from '@/lib/validation/parse'
 
 function defaultSlots(max: number) {
   return Array.from({ length: max }, (_, i) => ({
@@ -54,7 +56,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
+    const parsed = await parseJsonBody(request, adminPoolCreateSchema)
+    if (!parsed.ok) return parsed.response
+    const body = parsed.data
     await requireAdminUser(body.adminUserId, request)
     if (!isSupabaseConfigured()) {
       return NextResponse.json({ error: 'Supabase required' }, { status: 400 })

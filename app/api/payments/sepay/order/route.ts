@@ -12,6 +12,8 @@ import {
   loadSepayPendingFromDb,
   reopenSepayPendingIfNoWebhook,
 } from '@/lib/sepay/pending-store'
+import { sepayOrderQuerySchema } from '@/lib/validation/checkout'
+import { parseQuery } from '@/lib/validation/parse'
 
 /** Lấy thông tin QR/CK theo mã — dùng khi reload trang SePay */
 export async function GET(request: Request) {
@@ -20,10 +22,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const code = new URL(request.url).searchParams.get('code')?.trim().toUpperCase()
-  if (!code) {
-    return NextResponse.json({ error: 'Missing code' }, { status: 400 })
-  }
+  const url = new URL(request.url)
+  const query = parseQuery(url.searchParams, sepayOrderQuerySchema)
+  if (!query.ok) return query.response
+  const code = query.data.code
 
   if (!isSepayConfigured()) {
     return NextResponse.json({ error: 'SePay not configured' }, { status: 503 })

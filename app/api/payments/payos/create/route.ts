@@ -13,11 +13,12 @@ import { isSupabaseConfigured } from '@/lib/auth/login'
 import { isDemoCheckoutAllowed } from '@/lib/payments/demo-checkout'
 import { getPayosManualTransferHint } from '@/lib/payos/transfer-fallback'
 import { getSiteUrl } from '@/lib/site'
-import type { Cart } from '@/lib/types'
 import {
   getSessionOrNull,
   guardApiRequest,
 } from '@/lib/security/request-guard'
+import { paymentCreateBodySchema } from '@/lib/validation/checkout'
+import { parseJsonBody } from '@/lib/validation/parse'
 
 export async function POST(request: Request) {
   const denied = await guardApiRequest(request, {
@@ -31,15 +32,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  try {
-    const body = await request.json()
-    const cart = body.cart as Cart
-    const userId = session.userId
-    const language = (body.language as string) || 'vi'
+  const parsed = await parseJsonBody(request, paymentCreateBodySchema)
+  if (!parsed.ok) return parsed.response
 
-    if (!cart?.items?.length) {
-      return NextResponse.json({ error: 'Invalid cart' }, { status: 400 })
-    }
+  try {
+    const body = parsed.data
+    const cart = body.cart
+    const userId = session.userId
+    const language = body.language
 
     if (!isPayosConfigured()) {
       return NextResponse.json(
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
 
     const appUrl = getSiteUrl()
     const orderCode = generatePayosOrderCode()
-    const buyerName = String(body.buyerName || body.fullName || 'Khach').trim()
+    const buyerName = (body.buyerName || body.fullName || 'Khach').trim()
     const description = formatPayosDescription(orderCode)
 
     const returnUrl = `${appUrl}/checkout/payos-return?orderCode=${orderCode}`
@@ -77,16 +77,14 @@ export async function POST(request: Request) {
       cancelUrl,
       buyer: {
         buyerName,
-        buyerEmail: String(body.buyerEmail || body.email || '').trim(),
-        buyerPhone: String(body.buyerPhone || body.phone || '').trim(),
-        buyerAddress: String(
-          [body.buyerAddress, body.address, body.city].filter(Boolean).join(', ') || '',
-        ).trim(),
+        buyerEmail: body.buyerEmail || body.email || session.email,
+        buyerPhone: body.buyerPhone || body.phone || '',
+        buyerAddress: [body.buyerAddress, body.address].filter(Boolean).join(', '),
       },
     })
 
-    const productNames = (body.productNames || {}) as Record<string, string>
-    const lang = language === 'en' ? 'en' : 'vi'
+    const productNames = body.productNames
+    const lang = language
 
     const pendingPayload = {
       orderCode,

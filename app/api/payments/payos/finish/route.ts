@@ -20,6 +20,8 @@ import {
   getSessionOrNull,
   guardApiRequest,
 } from '@/lib/security/request-guard'
+import { payosFinishBodySchema } from '@/lib/validation/checkout'
+import { parseJsonBody } from '@/lib/validation/parse'
 
 export async function POST(request: Request) {
   const denied = await guardApiRequest(request, {
@@ -33,18 +35,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const parsed = await parseJsonBody(request, payosFinishBodySchema)
+  if (!parsed.ok) return parsed.response
+
   try {
-
-    const body = await request.json()
-    const orderCode = Number(body.orderCode)
-    const code = body.code as string | null | undefined
-    const status = body.status as string | null | undefined
-    const cancel = body.cancel as string | null | undefined
-    const language = body.language === 'en' ? 'en' : 'vi'
-
-    if (!orderCode) {
-      return NextResponse.json({ error: 'Missing orderCode' }, { status: 400 })
-    }
+    const body = parsed.data
+    const orderCode = body.orderCode
+    const code = body.code
+    const status = body.status
+    const cancel = body.cancel
+    const language = body.language
 
     if (await isPayosOrderAlreadyCompleted(orderCode)) {
       const res = NextResponse.json({

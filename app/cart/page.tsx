@@ -184,7 +184,7 @@ export default function CartPage() {
                           <Trash2 size={20} />
                         </button>
                         <div className="text-right">
-                          <p className="text-gray-400 text-sm mb-1">Qty</p>
+                          <p className="text-gray-400 text-sm mb-1">{t('cart.quantity', language)}</p>
                           <p className="text-white font-bold text-lg">{item.quantity}</p>
                         </div>
                       </div>

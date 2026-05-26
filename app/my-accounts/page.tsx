@@ -5,7 +5,13 @@ import Link from 'next/link'
 import { AppLayout } from '@/components/app-layout'
 import { useApp } from '@/lib/context'
 import { t } from '@/lib/translations'
-import { formatCurrency, formatDate } from '@/lib/utils/format'
+import {
+  formatCurrency,
+  formatDate,
+  formatProfileName,
+  formatSlotAssignmentLine,
+} from '@/lib/utils/format'
+import { invoiceStatusLabel } from '@/lib/invoices/display'
 import { motion } from 'framer-motion'
 import {
   KeyRound,
@@ -56,7 +62,10 @@ function AccountCard({
         <div>
           <h3 className="text-xl font-bold text-white">{account.productName}</h3>
           <p className="text-gray-400 text-sm capitalize">
-            {planLabel(account.planType as PlanType, language)} · {account.profileName || '—'}
+            {planLabel(account.planType as PlanType, language)}
+            {account.profileName
+              ? ` · ${formatProfileName(account.profileName, language)}`
+              : ''}
           </p>
         </div>
         <span
@@ -70,7 +79,9 @@ function AccountCard({
           {revoked
             ? t('myAccounts.revoked', language)
             : active
-              ? `${remaining} ${t('myAccounts.daysLeft', language)}`
+              ? language === 'vi'
+                ? `Còn ${remaining} ${t('myAccounts.daysLeft', language)}`
+                : `${remaining} ${t('myAccounts.daysLeft', language)}`
               : t('myAccounts.expired', language)}
         </span>
       </div>
@@ -83,6 +94,7 @@ function AccountCard({
             copied={copied}
             field="email"
             onCopy={copy}
+            language={language}
           />
           <CredentialRow
             label={t('myAccounts.password', language)}
@@ -92,6 +104,7 @@ function AccountCard({
             onCopy={copy}
             masked={!showPassword}
             onToggleMask={() => setShowPassword(!showPassword)}
+            language={language}
           />
           {account.slotsCount && account.slotsCount > 0 && (
             <p className="text-gray-400 text-xs">
@@ -101,10 +114,7 @@ function AccountCard({
           {account.slotAssignments && account.slotAssignments.length > 0 && (
             <ul className="text-xs text-gray-400 space-y-1 pt-2 border-t border-white/10">
               {account.slotAssignments.map((s) => (
-                <li key={s.slot_number}>
-                  Slot {s.slot_number}: {s.profile_name}
-                  {s.pin ? ` · PIN ${s.pin}` : ''}
-                </li>
+                <li key={s.slot_number}>{formatSlotAssignmentLine(s, language)}</li>
               ))}
             </ul>
           )}
@@ -113,7 +123,7 @@ function AccountCard({
           )}
           <p className="text-gray-500 text-xs">
             {t('myAccounts.expires', language)}:{' '}
-            <span className="text-gray-300">{formatDate(account.expiresAt)}</span>
+            <span className="text-gray-300">{formatDate(account.expiresAt, language)}</span>
           </p>
         </div>
       ) : revoked ? (
@@ -135,6 +145,7 @@ function CredentialRow({
   onCopy,
   masked,
   onToggleMask,
+  language,
 }: {
   label: string
   value: string
@@ -143,6 +154,7 @@ function CredentialRow({
   onCopy: (field: string, value: string) => void
   masked?: boolean
   onToggleMask?: () => void
+  language: 'vi' | 'en'
 }) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center gap-2">
@@ -170,7 +182,7 @@ function CredentialRow({
           <Copy size={18} />
         </button>
         {copied === field && (
-          <span className="text-green-400 text-xs">OK</span>
+          <span className="text-green-400 text-xs">{t('myAccounts.copied', language)}</span>
         )}
       </div>
     </div>
@@ -297,21 +309,24 @@ export default function MyAccountsPage() {
                       <p className="text-white font-mono text-sm">
                         {inv.invoiceNumber || inv.id.slice(0, 8)}
                       </p>
-                      <p className="text-gray-500 text-xs mt-1">{formatDate(inv.invoiceDate)}</p>
+                      <p className="text-gray-500 text-xs mt-1">
+                        {formatDate(inv.invoiceDate, language)}
+                      </p>
                       {inv.items?.map((item, i) => (
                         <p key={i} className="text-gray-400 text-sm mt-1">
-                          {item.productName} · {item.planType}
+                          {item.productName} ·{' '}
+                          {planLabel(item.planType as PlanType, language)}
                         </p>
                       ))}
                     </div>
                     <div className="text-right">
                       <p className="text-white font-bold">{formatCurrency(inv.totalAmount)}</p>
                       <p
-                        className={`text-sm capitalize ${
+                        className={`text-sm ${
                           inv.status === 'paid' ? 'text-green-400' : 'text-yellow-400'
                         }`}
                       >
-                        {inv.status}
+                        {invoiceStatusLabel(inv.status, language)}
                       </p>
                     </div>
                   </div>

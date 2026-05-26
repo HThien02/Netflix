@@ -1,30 +1,42 @@
-'use client'
+"use client";
 
-import React from 'react'
-import Link from 'next/link'
-import Image from 'next/image'
-import { AppLayout } from '@/components/app-layout'
-import { useApp } from '@/lib/context'
-import { t } from '@/lib/translations'
-import { motion } from 'framer-motion'
-import { ArrowRight, Play, Zap, Users, BarChart3 } from 'lucide-react'
-import { NetflixIntroVideo } from '@/components/netflix-intro-video'
-import { formatCurrency } from '@/lib/utils/format'
+import React from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { AppLayout } from "@/components/app-layout";
+import { useApp } from "@/lib/context";
+import { t } from "@/lib/translations";
+import { motion } from "framer-motion";
+import { ArrowRight, Play, Zap, Users, BarChart3 } from "lucide-react";
+import { NetflixIntroVideo } from "@/components/netflix-intro-video";
+import { formatCurrency } from "@/lib/utils/format";
 
 export default function Home() {
-  const { language, isAuthenticated } = useApp()
+  const { language, isAuthenticated } = useApp();
 
   const fadeInUp = {
     initial: { opacity: 0, y: 30 },
     whileInView: { opacity: 1, y: 0 },
     transition: { duration: 0.6 },
-  }
+  };
 
   const features = [
-    { icon: Zap, title: t('home.feature1Title', language), description: t('home.feature1Desc', language) },
-    { icon: Users, title: t('home.feature2Title', language), description: t('home.feature2Desc', language) },
-    { icon: BarChart3, title: t('home.feature3Title', language), description: t('home.feature3Desc', language) },
-  ]
+    {
+      icon: Zap,
+      title: t("home.feature1Title", language),
+      description: t("home.feature1Desc", language),
+    },
+    {
+      icon: Users,
+      title: t("home.feature2Title", language),
+      description: t("home.feature2Desc", language),
+    },
+    {
+      icon: BarChart3,
+      title: t("home.feature3Title", language),
+      description: t("home.feature3Desc", language),
+    },
+  ];
 
   return (
     <AppLayout>
@@ -52,14 +64,16 @@ export default function Home() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8 }}
             >
-              <motion.h1 
+              <motion.h1
                 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-white mb-6 leading-tight"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2, duration: 0.8 }}
               >
-                <span className="text-gradient">{t('hero.unlimited', language)}</span>
-                {' '}{t('hero.entertainment', language)}
+                <span className="text-gradient">
+                  {t("hero.unlimited", language)}
+                </span>{" "}
+                {t("hero.entertainment", language)}
               </motion.h1>
 
               <motion.p
@@ -68,7 +82,7 @@ export default function Home() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4, duration: 0.8 }}
               >
-                {t('hero.subtitle', language)}
+                {t("hero.subtitle", language)}
               </motion.p>
 
               <motion.div
@@ -82,15 +96,18 @@ export default function Home() {
                   className="btn-primary-red py-4 px-8 flex items-center justify-center gap-2 group"
                 >
                   <Play size={24} />
-                  {t('hero.cta', language)}
-                  <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                  {t("hero.cta", language)}
+                  <ArrowRight
+                    size={20}
+                    className="group-hover:translate-x-1 transition-transform"
+                  />
                 </Link>
                 {!isAuthenticated && (
                   <Link
                     href="/auth/signup"
                     className="bg-white/10 hover:bg-white/20 text-white font-bold py-4 px-8 rounded-lg border border-white/20 transition-all duration-300"
                   >
-                    {t('nav.signUp', language)}
+                    {t("nav.signUp", language)}
                   </Link>
                 )}
               </motion.div>
@@ -103,13 +120,13 @@ export default function Home() {
                 transition={{ delay: 0.8, duration: 0.6 }}
               >
                 <div>
-                  <p className="text-white font-bold text-2xl">2.5M+</p>
-                  <p className="text-sm">{t('hero.subscribers', language)}</p>
+                  <p className="text-white font-bold text-2xl">100+</p>
+                  <p className="text-sm">{t("hero.subscribers", language)}</p>
                 </div>
                 <div className="w-px h-12 bg-gray-600" />
                 <div>
-                  <p className="text-white font-bold text-2xl">50K+</p>
-                  <p className="text-sm">{t('hero.content', language)}</p>
+                  <p className="text-white font-bold text-2xl">10+</p>
+                  <p className="text-sm">{t("hero.content", language)}</p>
                 </div>
               </motion.div>
             </motion.div>
@@ -129,14 +146,25 @@ export default function Home() {
                   transition={{ duration: 4, repeat: Infinity }}
                 >
                   <div className="space-y-4 sm:space-y-6">
-                    <NetflixIntroVideo className="w-full aspect-video" withSound />
+                    <NetflixIntroVideo
+                      className="w-full aspect-video"
+                      withSound
+                    />
                     <div>
-                      <h3 className="text-white font-bold text-lg">{t('hero.premiumPlus', language)}</h3>
-                      <p className="text-gray-400 text-sm">{t('hero.premiumDesc', language)}</p>
+                      <h3 className="text-white font-bold text-lg">
+                        {t("hero.premiumPlus", language)}
+                      </h3>
+                      <p className="text-gray-400 text-sm">
+                        {t("hero.premiumDesc", language)}
+                      </p>
                     </div>
                     <div className="flex items-baseline gap-2">
-                      <span className="text-3xl font-bold text-white">{formatCurrency(10_000)}</span>
-                      <span className="text-gray-400">{t('hero.perMonth', language)}</span>
+                      <span className="text-3xl font-bold text-white">
+                        {formatCurrency(10_000)}
+                      </span>
+                      <span className="text-gray-400">
+                        {t("hero.perMonth", language)}
+                      </span>
                     </div>
                   </div>
                 </motion.div>
@@ -152,8 +180,12 @@ export default function Home() {
                       <Zap className="text-green-400" size={24} />
                     </div>
                     <div>
-                      <p className="text-white font-semibold text-sm">{t('hero.hdQuality', language)}</p>
-                      <p className="text-gray-400 text-xs">{t('hero.hdDesc', language)}</p>
+                      <p className="text-white font-semibold text-sm">
+                        {t("hero.hdQuality", language)}
+                      </p>
+                      <p className="text-gray-400 text-xs">
+                        {t("hero.hdDesc", language)}
+                      </p>
                     </div>
                   </div>
                 </motion.div>
@@ -168,8 +200,12 @@ export default function Home() {
                       <Users className="text-blue-400" size={24} />
                     </div>
                     <div>
-                      <p className="text-white font-semibold text-sm">{t('hero.multiProfile', language)}</p>
-                      <p className="text-gray-400 text-xs">{t('hero.multiDesc', language)}</p>
+                      <p className="text-white font-semibold text-sm">
+                        {t("hero.multiProfile", language)}
+                      </p>
+                      <p className="text-gray-400 text-xs">
+                        {t("hero.multiDesc", language)}
+                      </p>
                     </div>
                   </div>
                 </motion.div>
@@ -182,22 +218,21 @@ export default function Home() {
       {/* Features Section */}
       <section className="py-20 bg-netflix-black border-t border-netflix-dark">
         <div className="container mx-auto px-4">
-          <motion.div
-            className="text-center mb-16"
-            {...fadeInUp}
-          >
+          <motion.div className="text-center mb-16" {...fadeInUp}>
             <h2 className="text-4xl md:text-5xl font-bold mb-4">
-              {t('home.whyTitle', language)}{' '}
+              {t("home.whyTitle", language)}{" "}
               <span className="text-netflix-red">Netflix</span>
               <span className="text-white">Hub</span>
               <span className="text-netflix-red">?</span>
             </h2>
-            <p className="text-gray-400 text-lg">{t('home.whySubtitle', language)}</p>
+            <p className="text-gray-400 text-lg">
+              {t("home.whySubtitle", language)}
+            </p>
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {features.map((feature, index) => {
-              const Icon = feature.icon
+              const Icon = feature.icon;
               return (
                 <motion.div
                   key={index}
@@ -208,10 +243,12 @@ export default function Home() {
                   <div className="mb-4 p-3 w-fit bg-netflix-red/20 rounded-lg">
                     <Icon className="text-netflix-red" size={28} />
                   </div>
-                  <h3 className="text-xl font-bold text-white mb-2">{feature.title}</h3>
+                  <h3 className="text-xl font-bold text-white mb-2">
+                    {feature.title}
+                  </h3>
                   <p className="text-gray-400">{feature.description}</p>
                 </motion.div>
-              )
+              );
             })}
           </div>
         </div>
@@ -220,24 +257,22 @@ export default function Home() {
       {/* CTA Section */}
       <section className="py-20 bg-gradient-to-r from-netflix-red/10 via-transparent to-blue-500/10 border-t border-netflix-dark">
         <div className="container mx-auto px-4 text-center">
-          <motion.div
-            {...fadeInUp}
-          >
+          <motion.div {...fadeInUp}>
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-              {t('home.ctaTitle', language)}
+              {t("home.ctaTitle", language)}
             </h2>
             <p className="text-gray-400 text-lg mb-8 max-w-2xl mx-auto">
-              {t('home.ctaSubtitle', language)}
+              {t("home.ctaSubtitle", language)}
             </p>
             <Link
               href="/marketplace"
               className="inline-block btn-primary-red py-4 px-10"
             >
-              {t('home.ctaButton', language)}
+              {t("home.ctaButton", language)}
             </Link>
           </motion.div>
         </div>
       </section>
     </AppLayout>
-  )
+  );
 }

@@ -10,6 +10,8 @@ import { t } from '@/lib/translations'
 import { motion } from 'framer-motion'
 import { Eye, EyeOff, Mail, Lock, User as UserIcon, CheckCircle } from 'lucide-react'
 import { GoogleSignInButton } from '@/components/auth/google-sign-in-button'
+import { validateClient } from '@/lib/validation/client'
+import { signupFormSchema } from '@/lib/validation/auth'
 
 function SignupPageContent() {
   const router = useRouter()
@@ -28,38 +30,29 @@ function SignupPageContent() {
     return null
   }
 
-  const validateForm = () => {
-    if (!fullName.trim()) {
-      setError(t('auth.nameRequired', language))
-      return false
-    }
-    if (!email.includes('@')) {
-      setError(t('auth.emailRequired', language))
-      return false
-    }
-    if (password.length < 6) {
-      setError(t('auth.passwordMin', language))
-      return false
-    }
-    if (password !== confirmPassword) {
-      setError(t('auth.passwordMismatch', language))
-      return false
-    }
-    return true
-  }
-
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    if (!validateForm()) return
+
+    const valid = validateClient(
+      signupFormSchema,
+      { email, password, fullName, confirmPassword, language },
+      language,
+    )
+    if (!valid.success) {
+      setError(valid.error)
+      return
+    }
+
     setLoading(true)
 
     try {
+      const { confirmPassword: _, ...payload } = valid.data
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ email, password, fullName, language }),
+        body: JSON.stringify(payload),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || t('common.error', language))

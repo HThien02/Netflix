@@ -17,6 +17,8 @@ import { t, type Lang } from '@/lib/translations'
 import { ShoppingCart, Clock } from 'lucide-react'
 import { isProductPurchasable } from '@/lib/products/catalog'
 import { v4 as uuidv4 } from 'uuid'
+import { validateClient } from '@/lib/validation/client'
+import { cartSchema } from '@/lib/validation/cart'
 
 type Props = {
   product: Product
@@ -39,6 +41,7 @@ export function ProductPurchasePanel({
   const [planType, setPlanType] = useState<PlanType>('monthly')
   const [availableSlots, setAvailableSlots] = useState<number[]>([1, 2, 3, 4])
   const [selectedSlots, setSelectedSlots] = useState(1)
+  const [addError, setAddError] = useState('')
 
   const shortTerm = isShortTermPlan(planType)
 
@@ -76,6 +79,7 @@ export function ProductPurchasePanel({
   )
 
   const handleAdd = () => {
+    setAddError('')
     if (!isAuthenticated) {
       router.push('/auth/login')
       return
@@ -91,7 +95,7 @@ export function ProductPurchasePanel({
       productName: product.name,
     }
 
-    onAddToCart({
+    const nextCart: Cart = {
       id: uuidv4(),
       userId: userId || 'user-1',
       items: [cartItem],
@@ -100,7 +104,15 @@ export function ProductPurchasePanel({
       discount: 0,
       total: price,
       updatedAt: new Date(),
-    })
+    }
+
+    const valid = validateClient(cartSchema, nextCart, language)
+    if (!valid.success) {
+      setAddError(valid.error)
+      return
+    }
+
+    onAddToCart(valid.data)
     router.push('/cart')
   }
 
@@ -207,6 +219,8 @@ export function ProductPurchasePanel({
           })}
         </div>
       </div>
+
+      {addError && <p className="text-red-400 text-sm">{addError}</p>}
 
       <button
         type="button"

@@ -7,6 +7,8 @@ import {
   guardApiRequest,
 } from '@/lib/security/request-guard'
 import { verifyCronSecret } from '@/lib/security/api-auth'
+import { emailPaymentSuccessSchema } from '@/lib/validation/admin'
+import { parseJsonBody } from '@/lib/validation/parse'
 
 export async function POST(request: Request) {
   if (!verifyCronSecret(request)) {
@@ -18,13 +20,11 @@ export async function POST(request: Request) {
     }
   }
 
-  try {
-    const { userId, invoiceNumber, total, productNames, language = 'vi' } =
-      await request.json()
+  const parsed = await parseJsonBody(request, emailPaymentSuccessSchema)
+  if (!parsed.ok) return parsed.response
 
-    if (!userId || !invoiceNumber) {
-      return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
-    }
+  try {
+    const { userId, invoiceNumber, total, productNames, language = 'vi' } = parsed.data
 
     const supabase = createAdminClient()
     const { data: user } = await supabase

@@ -1,18 +1,19 @@
 import { NextResponse } from 'next/server'
 import { authenticateUser } from '@/lib/auth/session'
 import { signSession, setSessionOnResponse } from '@/lib/auth/session-cookie'
-
 import { guardApiRequest } from '@/lib/security/request-guard'
+import { loginBodySchema } from '@/lib/validation/auth'
+import { parseJsonBody } from '@/lib/validation/parse'
 
 export async function POST(request: Request) {
   const denied = await guardApiRequest(request, { skipOriginCheck: false })
   if (denied) return denied
 
+  const parsed = await parseJsonBody(request, loginBodySchema)
+  if (!parsed.ok) return parsed.response
+
   try {
-    const { email, password } = await request.json()
-    if (!email || !password) {
-      return NextResponse.json({ error: 'Email and password required' }, { status: 400 })
-    }
+    const { email, password } = parsed.data
 
     const { user, source } = await authenticateUser(email, password)
     if (!user || !source) {

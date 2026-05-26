@@ -3,21 +3,22 @@ import bcrypt from 'bcryptjs'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendWelcomeEmail } from '@/lib/email/send'
 import { signSession, setSessionOnResponse } from '@/lib/auth/session-cookie'
-
 import { guardApiRequest } from '@/lib/security/request-guard'
+import { registerBodySchema } from '@/lib/validation/auth'
+import { parseJsonBody } from '@/lib/validation/parse'
 
 export async function POST(request: Request) {
   const denied = await guardApiRequest(request)
   if (denied) return denied
 
+  const parsed = await parseJsonBody(request, registerBodySchema)
+  if (!parsed.ok) return parsed.response
+
   try {
-    const { email, password, fullName, language = 'vi' } = await request.json()
-    if (!email?.includes('@') || !password || password.length < 6 || !fullName?.trim()) {
-      return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
-    }
+    const { email, password, fullName, language } = parsed.data
 
     const supabase = createAdminClient()
-    const normalized = email.toLowerCase().trim()
+    const normalized = email
 
     const { data: existing } = await supabase
       .from('users')
@@ -26,10 +27,7 @@ export async function POST(request: Request) {
       .maybeSingle()
 
     if (existing) {
-      return NextResponse.json(
-        { error: language === 'vi' ? 'Email đã được sử dụng' : 'Email already in use' },
-        { status: 409 },
-      )
+      return NextResponse.json({ error: 'Email already registered' }, { status: 409 })
     }
 
     const password_hash = await bcrypt.hash(password, 10)
@@ -38,23 +36,27 @@ export async function POST(request: Request) {
       .insert({
         email: normalized,
         password_hash,
+        full_name: fullName,
         role: 'customer',
-        full_name: fullName.trim(),
-        language: language === 'en' ? 'en' : 'vi',
+        language,
       })
       .select('id, email, full_name, role, language')
       .single()
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error || !user) {
+      return NextResponse.json({ error: error?.message || 'Registration failed' }, { status: 400 })
     }
 
-    await sendWelcomeEmail(normalized, fullName.trim(), language === 'en' ? 'en' : 'vi')
+    try {
+      await sendWelcomeEmail(user.email, user.full_name, language)
+    } catch {
+      /* email optional */
+    }
 
     const token = signSession({
       userId: user.id,
       email: user.email,
-      role: user.role as 'customer' | 'merchant' | 'admin',
+      role: user.role as 'customer',
     })
 
     const res = NextResponse.json({
@@ -66,7 +68,6 @@ export async function POST(request: Request) {
         language: user.language,
       },
     })
-
     return setSessionOnResponse(res, token)
   } catch {
     return NextResponse.json({ error: 'Server error' }, { status: 500 })

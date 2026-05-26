@@ -12,11 +12,12 @@ import { setSepayPendingCookie } from '@/lib/sepay/pending-cookie'
 import { reopenSepayPendingIfNoWebhook, saveSepayPendingToDb } from '@/lib/sepay/pending-store'
 import { isSupabaseConfigured } from '@/lib/auth/login'
 import { isDemoCheckoutAllowed } from '@/lib/payments/demo-checkout'
-import type { Cart } from '@/lib/types'
 import {
   getSessionOrNull,
   guardApiRequest,
 } from '@/lib/security/request-guard'
+import { sepayPaymentCreateBodySchema } from '@/lib/validation/checkout'
+import { parseJsonBody } from '@/lib/validation/parse'
 
 export async function POST(request: Request) {
   const denied = await guardApiRequest(request, {
@@ -30,15 +31,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  try {
-    const body = await request.json()
-    const cart = body.cart as Cart
-    const userId = session.userId
-    const language = (body.language as string) || 'vi'
+  const parsed = await parseJsonBody(request, sepayPaymentCreateBodySchema)
+  if (!parsed.ok) return parsed.response
 
-    if (!cart?.items?.length) {
-      return NextResponse.json({ error: 'Invalid cart' }, { status: 400 })
-    }
+  try {
+    const body = parsed.data
+    const cart = body.cart
+    const userId = session.userId
+    const language = body.language
 
     if (!isSepayConfigured()) {
       return NextResponse.json(
@@ -70,14 +70,12 @@ export async function POST(request: Request) {
     await reopenSepayPendingIfNoWebhook(paymentCode)
     const bank = getSepayBankDisplay()
     const qrImageUrl = buildSepayQrImageUrl(amountVnd, paymentCode)
-    const lang = language === 'en' ? 'en' : 'vi'
-
     const pendingPayload = {
       paymentCode,
       userId,
       cart,
-      productNames: (body.productNames || {}) as Record<string, string>,
-      language: lang as 'vi' | 'en',
+      productNames: body.productNames,
+      language,
     }
 
     const saved = await saveSepayPendingToDb(pendingPayload, amountVnd)

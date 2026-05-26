@@ -7,6 +7,8 @@ import { useApp } from '@/lib/context'
 import { t } from '@/lib/translations'
 import { motion } from 'framer-motion'
 import { Mail } from 'lucide-react'
+import { validateClient } from '@/lib/validation/client'
+import { forgotPasswordBodySchema } from '@/lib/validation/auth'
 
 export default function ForgotPasswordPage() {
   const { language } = useApp()
@@ -17,13 +19,20 @@ export default function ForgotPasswordPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
     setError('')
+
+    const valid = validateClient(forgotPasswordBodySchema, { email, language }, language)
+    if (!valid.success) {
+      setError(valid.error)
+      return
+    }
+
+    setLoading(true)
     try {
       const res = await fetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, language }),
+        body: JSON.stringify(valid.data),
       })
       if (!res.ok) throw new Error('Failed')
       setSent(true)

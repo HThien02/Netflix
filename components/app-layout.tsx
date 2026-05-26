@@ -256,7 +256,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <ul className="space-y-2 text-gray-400 text-sm">
                 <li>
                   <Link
-                    href="/support/tickets"
+                    href="/support/new"
                     className="hover:text-netflix-red transition-colors"
                   >
                     {t("footer.help", language)}

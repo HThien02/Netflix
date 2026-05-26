@@ -144,6 +144,13 @@ export interface Coupon {
 }
 
 // Support Ticket Types
+export type SupportTicketAttachment = {
+  url: string
+  name: string
+  mimeType: string
+  size: number
+}
+
 export interface SupportTicket {
   id: string
   userId: string
@@ -151,6 +158,7 @@ export interface SupportTicket {
   description: string
   priority: 'low' | 'medium' | 'high' | 'urgent'
   status: 'open' | 'in_progress' | 'resolved' | 'closed'
+  attachments?: SupportTicketAttachment[]
   messages: TicketMessage[]
   createdAt: Date
   updatedAt: Date

@@ -46,6 +46,18 @@ export default function SubscriptionsPage() {
     }
   }
 
+  const subscriptionStatusLabel = (status: Subscription['status']) => {
+    const key =
+      status === 'active'
+        ? 'subscriptions.active'
+        : status === 'cancelled'
+          ? 'subscriptions.cancelledLabel'
+          : status === 'expired'
+            ? 'subscriptions.expired'
+            : 'subscriptions.paused'
+    return t(key, language)
+  }
+
   const getStatusColor = (status: Subscription['status']) => {
     switch (status) {
       case 'active':
@@ -162,7 +174,9 @@ export default function SubscriptionsPage() {
                           <Calendar size={16} className="text-gray-400" />
                           <div>
                             <p className="text-gray-400 text-xs">{t('subscriptions.started', language)}</p>
-                            <p className="text-white font-semibold text-sm">{formatDate(subscription.startDate)}</p>
+                            <p className="text-white font-semibold text-sm">
+                              {formatDate(subscription.startDate, language)}
+                            </p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -178,9 +192,14 @@ export default function SubscriptionsPage() {
                         <p className="text-gray-400 text-xs mb-1">{t('subscriptions.price', language)}</p>
                         <p className="text-white font-bold text-lg mb-3">{formatCurrency(subscription.price)}</p>
                         <p className="text-gray-400 text-xs">
-                          {subscription.status === 'active' && `Renews ${formatDate(subscription.renewalDate)}`}
-                          {subscription.status === 'expired' && `Expired ${formatDate(subscription.endDate)}`}
-                          {subscription.status === 'cancelled' && 'Cancelled'}
+                          {subscription.status === 'active' &&
+                            subscription.renewalDate &&
+                            `${t('subscriptions.renewsOn', language)} ${formatDate(subscription.renewalDate, language)}`}
+                          {subscription.status === 'expired' &&
+                            subscription.endDate &&
+                            `${t('subscriptions.expiredOn', language)} ${formatDate(subscription.endDate, language)}`}
+                          {subscription.status === 'cancelled' &&
+                            t('subscriptions.cancelledLabel', language)}
                         </p>
                       </div>
 
@@ -188,7 +207,9 @@ export default function SubscriptionsPage() {
                       <div className="space-y-3">
                         <div className={`px-4 py-2 rounded-lg border flex items-center gap-2 w-fit ${getStatusColor(subscription.status)}`}>
                           {getStatusIcon(subscription.status)}
-                          <span className="font-semibold text-sm capitalize">{subscription.status}</span>
+                          <span className="font-semibold text-sm">
+                            {subscriptionStatusLabel(subscription.status)}
+                          </span>
                         </div>
 
                         <div className="space-y-2">

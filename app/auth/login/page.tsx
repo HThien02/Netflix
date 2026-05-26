@@ -13,6 +13,8 @@ import { loadUserData } from '@/lib/user-data'
 import type { User } from '@/lib/types'
 import { BrandLogo } from '@/components/brand-logo'
 import { GoogleSignInButton } from '@/components/auth/google-sign-in-button'
+import { validateClient } from '@/lib/validation/client'
+import { loginBodySchema } from '@/lib/validation/auth'
 
 function LoginPageContent() {
   const router = useRouter()
@@ -65,15 +67,22 @@ function LoginPageContent() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
     setError('')
+
+    const valid = validateClient(loginBodySchema, { email, password }, language)
+    if (!valid.success) {
+      setError(valid.error)
+      return
+    }
+
+    setLoading(true)
 
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(valid.data),
       })
       const data = await res.json()
       if (res.ok && data.user) {

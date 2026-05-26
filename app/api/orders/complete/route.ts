@@ -7,7 +7,8 @@ import {
   getSessionOrNull,
   guardApiRequest,
 } from '@/lib/security/request-guard'
-import type { Cart, Lang } from '@/lib/types'
+import { completeOrderBodySchema } from '@/lib/validation/checkout'
+import { parseJsonBody } from '@/lib/validation/parse'
 
 export async function POST(request: Request) {
   const denied = await guardApiRequest(request, {
@@ -21,25 +22,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const parsed = await parseJsonBody(request, completeOrderBodySchema)
+  if (!parsed.ok) return parsed.response
+
   try {
-    const body = await request.json()
-    const {
-      userId,
-      userEmail,
-      userName,
-      language = 'vi',
-      cart,
-      productNames,
-      paymentMethod,
-    } = body as {
-      userId: string
-      userEmail?: string
-      userName?: string
-      language?: Lang
-      cart: Cart
-      productNames: Record<string, string>
-      paymentMethod: 'payos' | 'sepay' | 'credit_card' | 'wallet'
-    }
+    const { userId, userEmail, userName, language, cart, productNames, paymentMethod } =
+      parsed.data
 
     if (userId !== session.userId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -55,13 +43,8 @@ export async function POST(request: Request) {
       )
     }
 
-    if (!cart?.items?.length) {
-      return NextResponse.json({ error: 'Missing cart' }, { status: 400 })
-    }
-
     let email = userEmail || session.email
     let name = userName || 'Customer'
-    const lang = (language === 'en' ? 'en' : 'vi') as Lang
 
     if (isSupabaseConfigured()) {
       const supabase = createAdminClient()
@@ -76,18 +59,14 @@ export async function POST(request: Request) {
       }
     }
 
-    if (!email) {
-      return NextResponse.json({ error: 'User email required' }, { status: 400 })
-    }
-
     const result = await completeOrderServer({
       userId: session.userId,
       userEmail: email,
       userName: name,
-      language: lang,
+      language,
       cart,
       productNames,
-      paymentMethod: paymentMethod || 'payos',
+      paymentMethod,
     })
 
     return NextResponse.json({

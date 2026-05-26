@@ -1,13 +1,19 @@
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { guardApiRequest } from '@/lib/security/request-guard'
+import { resetPasswordBodySchema } from '@/lib/validation/auth'
+import { parseJsonBody } from '@/lib/validation/parse'
 
 export async function POST(request: Request) {
+  const denied = await guardApiRequest(request)
+  if (denied) return denied
+
+  const parsed = await parseJsonBody(request, resetPasswordBodySchema)
+  if (!parsed.ok) return parsed.response
+
   try {
-    const { token, password, language = 'vi' } = await request.json()
-    if (!token || !password || password.length < 6) {
-      return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
-    }
+    const { token, password, language } = parsed.data
 
     const supabase = createAdminClient()
     const { data: row } = await supabase

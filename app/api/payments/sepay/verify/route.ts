@@ -4,6 +4,8 @@ import { isSepayApiConfigured } from '@/lib/sepay/api-client'
 import { getSepayOrderStatus, isSepayOrderAlreadyCompleted } from '@/lib/sepay/pending-store'
 import { tryCompleteFromStoredWebhookEvent } from '@/lib/sepay/complete-transfer'
 import { tryCompleteSepayFromApi } from '@/lib/sepay/sync-from-api'
+import { sepayVerifyQuerySchema } from '@/lib/validation/checkout'
+import { parseQuery } from '@/lib/validation/parse'
 
 const POLL_INTERVAL_MS = 2000
 const MAX_WAIT_SEC = 90
@@ -46,20 +48,17 @@ export async function GET(request: Request) {
   }
 
   const url = new URL(request.url)
-  const code = url.searchParams.get('code')?.trim().toUpperCase()
-  if (!code) {
-    return NextResponse.json({ error: 'Missing code' }, { status: 400 })
-  }
+  const query = parseQuery(url.searchParams, sepayVerifyQuerySchema)
+  if (!query.ok) return query.response
 
-  const waitRaw = parseInt(url.searchParams.get('wait') || '0', 10)
-  const waitSec = Number.isFinite(waitRaw)
-    ? Math.min(MAX_WAIT_SEC, Math.max(0, waitRaw))
-    : 0
+  const { code, wait: waitSec } = query.data
+
+  const waitSecClamped = Math.min(MAX_WAIT_SEC, Math.max(0, waitSec))
 
   let { row, paid } = await resolvePaidState(code)
 
-  if (!paid && waitSec > 0) {
-    const deadline = Date.now() + waitSec * 1000
+  if (!paid && waitSecClamped > 0) {
+    const deadline = Date.now() + waitSecClamped * 1000
     while (Date.now() < deadline && !paid) {
       await sleep(POLL_INTERVAL_MS)
       const next = await resolvePaidState(code)

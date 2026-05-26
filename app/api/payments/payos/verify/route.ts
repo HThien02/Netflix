@@ -10,6 +10,8 @@ import {
   getSessionOrNull,
   guardApiRequest,
 } from '@/lib/security/request-guard'
+import { payosVerifyQuerySchema } from '@/lib/validation/checkout'
+import { parseQuery } from '@/lib/validation/parse'
 
 export async function GET(request: Request) {
   const denied = await guardApiRequest(request, {
@@ -23,10 +25,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const orderCode = Number(new URL(request.url).searchParams.get('orderCode'))
-  if (!orderCode) {
-    return NextResponse.json({ error: 'Missing orderCode' }, { status: 400 })
-  }
+  const url = new URL(request.url)
+  const query = parseQuery(url.searchParams, payosVerifyQuerySchema)
+  if (!query.ok) return query.response
+
+  const { orderCode } = query.data
 
   const ownerId = await getPayosOrderUserId(orderCode)
   if (ownerId && ownerId !== session.userId) {

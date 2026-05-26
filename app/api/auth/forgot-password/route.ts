@@ -3,14 +3,20 @@ import crypto from 'crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendForgotPasswordEmail } from '@/lib/email/send'
 import { getSiteUrl } from '@/lib/site'
+import { guardApiRequest } from '@/lib/security/request-guard'
+import { forgotPasswordBodySchema } from '@/lib/validation/auth'
+import { parseJsonBody } from '@/lib/validation/parse'
 
 export async function POST(request: Request) {
+  const denied = await guardApiRequest(request)
+  if (denied) return denied
+
+  const parsed = await parseJsonBody(request, forgotPasswordBodySchema)
+  if (!parsed.ok) return parsed.response
+
   try {
-    const { email, language = 'vi' } = await request.json()
-    const normalized = email?.toLowerCase()?.trim()
-    if (!normalized?.includes('@')) {
-      return NextResponse.json({ error: 'Invalid email' }, { status: 400 })
-    }
+    const { email, language } = parsed.data
+    const normalized = email
 
     const supabase = createAdminClient()
     const { data: user } = await supabase
@@ -19,7 +25,6 @@ export async function POST(request: Request) {
       .eq('email', normalized)
       .maybeSingle()
 
-    // Luôn trả success để không lộ email có tồn tại hay không
     if (user) {
       const token = crypto.randomBytes(32).toString('hex')
       const expiresAt = new Date(Date.now() + 60 * 60 * 1000)

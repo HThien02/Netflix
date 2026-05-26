@@ -1,3 +1,5 @@
+import type { Lang } from '@/lib/translations'
+
 /** Luôn hiển thị VND (cả khi UI tiếng Anh) */
 export function formatCurrency(amount: number): string {
   const value = Math.round(amount)
@@ -12,27 +14,27 @@ export function formatCurrency(amount: number): string {
 /** @deprecated Dùng formatCurrency — mọi giá đều VND */
 export const formatVNDCurrency = formatCurrency
 
-export function formatDate(date: Date | string): string {
+function dateLocale(lang: Lang = 'vi') {
+  return lang === 'vi' ? 'vi-VN' : 'en-US'
+}
+
+export function formatDate(date: Date | string, lang: Lang = 'vi'): string {
   const d = typeof date === 'string' ? new Date(date) : date
-  return d.toLocaleDateString('en-US', {
+  return d.toLocaleDateString(dateLocale(lang), {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
   })
 }
 
+/** @deprecated Dùng formatDate(date, lang) */
 export function formatVNDate(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date
-  return d.toLocaleDateString('vi-VN', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
+  return formatDate(date, 'vi')
 }
 
-export function formatDateTime(date: Date | string): string {
+export function formatDateTime(date: Date | string, lang: Lang = 'vi'): string {
   const d = typeof date === 'string' ? new Date(date) : date
-  return d.toLocaleString('en-US', {
+  return d.toLocaleString(dateLocale(lang), {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -41,28 +43,55 @@ export function formatDateTime(date: Date | string): string {
   })
 }
 
+/** @deprecated Dùng formatDateTime(date, lang) */
 export function formatVNDateTime(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date
-  return d.toLocaleString('vi-VN', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  return formatDateTime(date, 'vi')
 }
 
-export function formatTimeAgo(date: Date | string): string {
+export function formatTimeAgo(date: Date | string, lang: Lang = 'vi'): string {
   const d = typeof date === 'string' ? new Date(date) : date
   const now = new Date()
   const seconds = Math.floor((now.getTime() - d.getTime()) / 1000)
 
-  if (seconds < 60) return 'just now'
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
-  if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`
-  
-  return formatDate(d)
+  if (seconds < 60) {
+    return lang === 'vi' ? 'vừa xong' : 'just now'
+  }
+  if (seconds < 3600) {
+    const m = Math.floor(seconds / 60)
+    return lang === 'vi' ? `${m} phút trước` : `${m}m ago`
+  }
+  if (seconds < 86400) {
+    const h = Math.floor(seconds / 3600)
+    return lang === 'vi' ? `${h} giờ trước` : `${h}h ago`
+  }
+  if (seconds < 604800) {
+    const days = Math.floor(seconds / 86400)
+    return lang === 'vi' ? `${days} ngày trước` : `${days}d ago`
+  }
+
+  return formatDate(d, lang)
+}
+
+/** "Profile 4" → "Hồ sơ 4" khi chọn tiếng Việt */
+export function formatProfileName(name: string | undefined | null, lang: Lang = 'vi'): string {
+  if (!name?.trim()) return '—'
+  const m = name.trim().match(/^Profile\s*(\d+)$/i)
+  if (m) return lang === 'vi' ? `Hồ sơ ${m[1]}` : `Profile ${m[1]}`
+  return name.trim()
+}
+
+export function formatSlotAssignmentLine(
+  slot: { slot_number: number; profile_name: string; pin?: string },
+  lang: Lang = 'vi',
+): string {
+  const profile = formatProfileName(slot.profile_name, lang)
+  const pin = slot.pin
+    ? lang === 'vi'
+      ? ` · Mã PIN: ${slot.pin}`
+      : ` · PIN: ${slot.pin}`
+    : ''
+  const slotLabel = lang === 'vi' ? 'Slot' : 'Slot'
+  return `${slotLabel} ${slot.slot_number}: ${profile}${pin}`
 }
 
 export function formatPhoneNumber(phone: string): string {

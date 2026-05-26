@@ -3,6 +3,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAdminUser } from '@/lib/admin/verify-admin'
 import { isSupabaseConfigured } from '@/lib/auth/login'
 import { mapDbProductToApp, productToDbPayload } from '@/lib/products/map'
+import { adminProductBodySchema } from '@/lib/validation/admin'
+import { parseJsonBody } from '@/lib/validation/parse'
 
 export async function PATCH(
   request: Request,
@@ -10,7 +12,9 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params
-    const body = await request.json()
+    const parsed = await parseJsonBody(request, adminProductBodySchema)
+    if (!parsed.ok) return parsed.response
+    const body = parsed.data
     await requireAdminUser(body.adminUserId, request)
     if (!isSupabaseConfigured()) {
       return NextResponse.json({ error: 'Supabase required' }, { status: 400 })

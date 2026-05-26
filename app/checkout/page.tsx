@@ -20,6 +20,8 @@ import { ArrowLeft, Smartphone, Building2 } from 'lucide-react'
 import confetti from 'canvas-confetti'
 import { PaymentSuccessView } from '@/components/checkout/payment-success-view'
 import { useClientRateLimit } from '@/lib/hooks/use-client-rate-limit'
+import { validateClient } from '@/lib/validation/client'
+import { checkoutBillingSchema, cartSchema } from '@/lib/validation'
 
 export default function CheckoutPage() {
   const router = useRouter()
@@ -74,9 +76,25 @@ export default function CheckoutPage() {
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!canRun()) return
-    setLoading(true)
     setOrderError('')
 
+    const billingCheck = validateClient(
+      checkoutBillingSchema,
+      { fullName, email, phone, address, city },
+      language,
+    )
+    if (!billingCheck.success) {
+      setOrderError(billingCheck.error)
+      return
+    }
+
+    const cartCheck = validateClient(cartSchema, cart, language)
+    if (!cartCheck.success) {
+      setOrderError(cartCheck.error)
+      return
+    }
+
+    setLoading(true)
     const productNames = buildProductNames()
 
     try {
@@ -86,8 +104,7 @@ export default function CheckoutPage() {
           headers: { 'Content-Type': 'application/json' },
           credentials: 'same-origin',
           body: JSON.stringify({
-            cart,
-            userId: currentUser.id,
+            cart: cartCheck.data,
             language,
             productNames,
           }),
@@ -111,14 +128,15 @@ export default function CheckoutPage() {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
         body: JSON.stringify({
-          cart,
-          userId: currentUser.id,
+          cart: cartCheck.data,
           language,
           productNames,
-          buyerName: fullName,
-          buyerEmail: email,
-          buyerPhone: phone,
-          buyerAddress: [address, city].filter(Boolean).join(', '),
+          buyerName: billingCheck.data.fullName,
+          buyerEmail: billingCheck.data.email,
+          buyerPhone: billingCheck.data.phone,
+          buyerAddress: [billingCheck.data.address, billingCheck.data.city]
+            .filter(Boolean)
+            .join(', '),
         }),
       })
       const payosData = await payosRes.json()

@@ -7,6 +7,8 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { useApp } from '@/lib/context'
 import { t } from '@/lib/translations'
 import { Lock } from 'lucide-react'
+import { validateClient } from '@/lib/validation/client'
+import { resetPasswordFormSchema } from '@/lib/validation/auth'
 
 function ResetForm() {
   const { language } = useApp()
@@ -21,21 +23,25 @@ function ResetForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (password.length < 6) {
-      setError(t('auth.passwordMin', language))
-      return
-    }
-    if (password !== confirm) {
-      setError(t('auth.passwordMismatch', language))
-      return
-    }
-    setLoading(true)
     setError('')
+
+    const valid = validateClient(
+      resetPasswordFormSchema,
+      { token, password, confirmPassword: confirm, language },
+      language,
+    )
+    if (!valid.success) {
+      setError(valid.error)
+      return
+    }
+
+    setLoading(true)
     try {
+      const { confirmPassword: _, ...payload } = valid.data
       const res = await fetch('/api/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, password, language }),
+        body: JSON.stringify(payload),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed')

@@ -7,6 +7,7 @@ import { useApp } from '@/lib/context'
 import { t } from '@/lib/translations'
 import { mockProducts, mockInvoices } from '@/lib/mock-data'
 import { formatDate, formatCurrency } from '@/lib/utils/format'
+import { invoiceStatusLabel } from '@/lib/invoices/display'
 import { motion } from 'framer-motion'
 import {
   LineChart,
@@ -240,7 +241,7 @@ export default function DashboardPage() {
                 <div key={invoice.id} className="flex items-center justify-between p-4 bg-black/30 rounded-lg">
                   <div>
                     <p className="text-white font-semibold">{invoice.id}</p>
-                    <p className="text-gray-400 text-sm">{formatDate(invoice.invoiceDate)}</p>
+                    <p className="text-gray-400 text-sm">{formatDate(invoice.invoiceDate, language)}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-white font-bold">{formatCurrency(invoice.totalAmount)}</p>
@@ -250,7 +251,7 @@ export default function DashboardPage() {
                       invoice.status === 'failed' && 'bg-red-500/20 text-red-400' ||
                       'bg-gray-500/20 text-gray-400'
                     }`}>
-                      {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+                      {invoiceStatusLabel(invoice.status, language)}
                     </div>
                   </div>
                 </div>

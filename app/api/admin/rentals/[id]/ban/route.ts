@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { requireAdminUser } from '@/lib/admin/verify-admin'
 import { banPurchasedAccount } from '@/lib/admin/ban-rental'
+import { adminRentalBanSchema } from '@/lib/validation/admin'
+import { parseJsonBody } from '@/lib/validation/parse'
 
 export async function POST(
   request: Request,
@@ -8,13 +10,15 @@ export async function POST(
 ) {
   try {
     const { id } = await params
-    const body = await request.json()
+    const parsed = await parseJsonBody(request, adminRentalBanSchema)
+    if (!parsed.ok) return parsed.response
+    const body = parsed.data
     await requireAdminUser(body.adminUserId, request)
     await banPurchasedAccount({
       rentalId: id,
-      adminUserId: body.adminUserId,
+      adminUserId: body.adminUserId!,
       banReasonId: body.banReasonId,
-      adminNote: body.adminNote,
+      adminNote: body.adminNote ?? undefined,
     })
     return NextResponse.json({ ok: true })
   } catch (e) {
