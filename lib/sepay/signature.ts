@@ -8,7 +8,7 @@ function verifyApiKey(request: Request, key: string): boolean {
   return auth === `Apikey ${key}` || auth === key
 }
 
-/** Xác thực webhook SePay — API Key (header Authorization: Apikey &lt;key&gt;) */
+/** Xác thực webhook SePay — API Key (Authorization: Apikey &lt;key&gt;). Bỏ qua SEPAY_WEBHOOK_AUTH cũ (hmac). */
 export function verifySepayWebhookRequest(
   request: Request,
   _rawBody: string,
@@ -22,23 +22,20 @@ export function verifySepayWebhookRequest(
     return { ok: true }
   }
 
-  if (mode !== 'apikey') {
-    return {
-      ok: false,
-      message: `SEPAY_WEBHOOK_AUTH=${mode} không còn hỗ trợ — dùng apikey và cấu hình API Key trên my.sepay.vn.`,
-    }
-  }
-
   const key = normalizeEnvSecret(process.env.SEPAY_WEBHOOK_API_KEY)
   if (!key) {
-    return { ok: false, message: 'Missing SEPAY_WEBHOOK_API_KEY' }
+    return {
+      ok: false,
+      message:
+        'Missing SEPAY_WEBHOOK_API_KEY — thêm trên Vercel (Production) và trùng API Key trên my.sepay.vn.',
+    }
   }
 
   if (!verifyApiKey(request, key)) {
     return {
       ok: false,
       message:
-        'Invalid Apikey — SEPAY_WEBHOOK_API_KEY trên Vercel phải khớp API Key webhook trên my.sepay.vn (Authorization: Apikey ...).',
+        'Invalid Apikey — SEPAY_WEBHOOK_API_KEY trên server phải khớp API Key webhook trên my.sepay.vn.',
     }
   }
 
