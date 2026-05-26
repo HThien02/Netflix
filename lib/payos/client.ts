@@ -42,9 +42,12 @@ export function resolvePayosAmountFromCart(cart: Cart) {
       sum + Math.round(Number(item.price) || 0) * Math.max(1, Number(item.quantity) || 1),
     0,
   )
-  const taxAmount = Math.round(subtotal * 0.1)
+  const taxAmount = 0
   const discount = Math.round(Number(cart.discount) || 0)
-  let amountVnd = subtotal + taxAmount - discount
+  const cartTotal = Math.round(Number(cart.total) || 0)
+
+  // Ưu tiên tổng tiền đã chốt ở cart để tránh lệch giữa UI và số tiền gửi PayOS.
+  let amountVnd = cartTotal > 0 ? cartTotal : subtotal + taxAmount - discount
   if (amountVnd <= 0 && subtotal > 0) amountVnd = subtotal + taxAmount
   amountVnd = Math.max(PAYOS_MIN_AMOUNT_VND, Math.round(amountVnd))
   return { amountVnd, subtotal, taxAmount, discount }

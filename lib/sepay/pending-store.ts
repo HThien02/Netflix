@@ -69,6 +69,13 @@ export async function loadSepayPendingFromDb(
   }
 }
 
+/** Đọc đơn chờ kể cả khi cần hiển thị lại QR (status pending) */
+export async function loadSepayPendingDisplayFromDb(
+  paymentCode: string,
+): Promise<(SepayPendingPayload & { amountVnd: number }) | null> {
+  return loadSepayPendingFromDb(paymentCode)
+}
+
 export async function isSepayOrderAlreadyCompleted(paymentCode: string): Promise<boolean> {
   if (!isSupabaseConfigured() || !hasSupabaseServiceRole()) return false
   const supabase = createAdminClient()

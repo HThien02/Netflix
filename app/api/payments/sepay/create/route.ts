@@ -10,6 +10,7 @@ import {
 import { setSepayPendingCookie } from '@/lib/sepay/pending-cookie'
 import { saveSepayPendingToDb } from '@/lib/sepay/pending-store'
 import { isSupabaseConfigured } from '@/lib/auth/login'
+import { isDemoCheckoutAllowed } from '@/lib/payments/demo-checkout'
 import type { Cart } from '@/lib/types'
 
 export async function POST(request: Request) {
@@ -28,9 +29,9 @@ export async function POST(request: Request) {
         {
           error:
             language === 'vi'
-              ? 'Chưa cấu hình SePay (TK ngân hàng + tiền tố mã CK)'
-              : 'SePay not configured',
-          demo: true,
+              ? 'Chưa cấu hình SePay trên server (SEPAY_BANK_* + SEPAY_PAYMENT_CODE_PREFIX). Thêm biến trên Vercel rồi Redeploy.'
+              : 'SePay not configured on server.',
+          ...(isDemoCheckoutAllowed() ? { demo: true } : {}),
         },
         { status: 503 },
       )

@@ -65,7 +65,7 @@ export async function completeOrderServer(input: CompleteOrderInput) {
     userId,
     subscriptionId: accounts[0]?.id || '',
     amount: cart.subtotal,
-    taxAmount: cart.taxAmount,
+    taxAmount: 0,
     totalAmount: cart.total,
     status: 'paid',
     paymentMethod,
@@ -90,7 +90,7 @@ export async function completeOrderServer(input: CompleteOrderInput) {
       .insert({
         user_id: userId,
         total_amount: cart.subtotal,
-        tax_amount: cart.taxAmount,
+        tax_amount: 0,
         discount_amount: cart.discount,
         final_amount: cart.total,
         status: 'completed',

@@ -69,13 +69,14 @@ export default function CartPage() {
       setCart(null)
     } else {
       const subtotal = updatedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
-      const taxAmount = subtotal * 0.1
+      const taxAmount = 0
+      const currentDiscount = couponApplied ? (subtotal * 0.1) : 0
       setCart({
         ...cart,
         items: updatedItems,
         subtotal,
         taxAmount,
-        total: subtotal + taxAmount - (couponApplied ? (subtotal * 0.1) : 0),
+        total: subtotal - currentDiscount,
       })
     }
   }
@@ -107,7 +108,8 @@ export default function CartPage() {
       ...cart,
       discount,
       couponCode: coupon.code,
-      total: cart.subtotal + cart.taxAmount - discount,
+      taxAmount: 0,
+      total: cart.subtotal - discount,
     })
     setCouponApplied(true)
   }
@@ -233,10 +235,6 @@ export default function CartPage() {
                 <div className="flex justify-between text-gray-400">
                   <span>{t('cart.subtotal', language)}</span>
                   <span>{formatCurrency(cart.subtotal)}</span>
-                </div>
-                <div className="flex justify-between text-gray-400">
-                  <span>{t('cart.tax', language)}</span>
-                  <span>{formatCurrency(cart.taxAmount)}</span>
                 </div>
                 {cart.discount > 0 && (
                   <div className="flex justify-between text-green-400">

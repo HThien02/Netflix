@@ -36,7 +36,7 @@ export default function CheckoutPage() {
   const [orderPlaced, setOrderPlaced] = useState(false)
   const [newInvoice, setNewInvoice] = useState<Invoice | null>(null)
   const [orderError, setOrderError] = useState('')
-  const [paymentMethod, setPaymentMethod] = useState<'payos' | 'sepay'>('payos')
+  const [paymentMethod, setPaymentMethod] = useState<'payos' | 'sepay'>('sepay')
 
   const [email, setEmail] = useState(currentUser?.email || '')
   const [fullName, setFullName] = useState(currentUser?.fullName || '')
@@ -77,53 +77,9 @@ export default function CheckoutPage() {
 
     try {
       if (paymentMethod === 'sepay') {
-        const sepayRes = await fetch('/api/payments/sepay/create', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'same-origin',
-          body: JSON.stringify({
-            cart,
-            userId: currentUser.id,
-            language,
-            productNames,
-          }),
-        })
-        const sepayData = await sepayRes.json()
-
-        if (sepayRes.ok && sepayData.paymentCode) {
-          saveSepayPendingCheckout(
-            cart,
-            productNames,
-            sepayData.paymentCode,
-            sepayData.amountVnd,
-            { qrImageUrl: sepayData.qrImageUrl, bank: sepayData.bank },
-          )
-          router.push(sepayData.checkoutPath || `/checkout/sepay?code=${sepayData.paymentCode}`)
-          return
-        }
-
-        if (sepayData.demo) {
-          const { invoice, accounts } = await completePurchase(
-            currentUser.id,
-            cart,
-            productNames,
-            'sepay',
-            {
-              userEmail: currentUser.email,
-              userName: currentUser.fullName,
-              language,
-            },
-          )
-          setNewInvoice(invoice)
-          setUserInvoices([invoice, ...userInvoices])
-          setPurchasedAccounts([...accounts, ...purchasedAccounts])
-          setOrderPlaced(true)
-          setCart(null)
-          confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } })
-          return
-        }
-
-        throw new Error(sepayData.error || t('checkout.orderFailed', language))
+        saveSepayPendingCheckout(cart, productNames)
+        window.location.href = '/checkout/sepay'
+        return
       }
 
       const payosRes = await fetch('/api/payments/payos/create', {
@@ -149,7 +105,7 @@ export default function CheckoutPage() {
         return
       }
 
-      if (payosData.demo) {
+      if (payosData.demo && process.env.NODE_ENV === 'development') {
         const { invoice, accounts } = await completePurchase(
           currentUser.id,
           cart,
@@ -365,10 +321,6 @@ export default function CheckoutPage() {
                   <span>{t('cart.subtotal', language)}</span>
                   <span>{formatCurrency(cart.subtotal)}</span>
                 </div>
-                <div className="flex justify-between text-gray-400">
-                  <span>{t('cart.tax', language)}</span>
-                  <span>{formatCurrency(cart.taxAmount)}</span>
-                </div>
                 {cart.discount > 0 && (
                   <div className="flex justify-between text-green-400">
                     <span>{t('cart.discount', language)}</span>
@@ -383,7 +335,6 @@ export default function CheckoutPage() {
               {orderError && <p className="text-red-400 text-sm mb-3">{orderError}</p>}
               <button
                 type="submit"
-                onClick={handlePlaceOrder}
                 disabled={loading}
                 className="w-full btn-primary-red py-3 disabled:opacity-50"
               >

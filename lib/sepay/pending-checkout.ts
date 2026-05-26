@@ -5,8 +5,8 @@ export const SEPAY_PENDING_KEY = 'sepay_pending_checkout'
 export type SepayClientPending = {
   cart: Cart
   productNames: Record<string, string>
-  paymentCode: string
-  amountVnd: number
+  paymentCode?: string
+  amountVnd?: number
   qrImageUrl?: string
   bank?: {
     bankBin: string
@@ -16,14 +16,29 @@ export type SepayClientPending = {
   }
 }
 
-export function saveSepayPendingCheckout(
-  cart: Cart,
-  productNames: Record<string, string>,
+export function saveSepayPendingCheckout(cart: Cart, productNames: Record<string, string>) {
+  const raw = JSON.stringify({ cart, productNames })
+  sessionStorage.setItem(SEPAY_PENDING_KEY, raw)
+  try {
+    localStorage.setItem(SEPAY_PENDING_KEY, raw)
+  } catch {
+    /* ignore */
+  }
+}
+
+export function saveSepayPaymentDetails(
   paymentCode: string,
   amountVnd: number,
   extras?: Pick<SepayClientPending, 'qrImageUrl' | 'bank'>,
 ) {
-  const raw = JSON.stringify({ cart, productNames, paymentCode, amountVnd, ...extras })
+  const existing = loadSepayPendingCheckout()
+  if (!existing?.cart) return
+  const raw = JSON.stringify({
+    ...existing,
+    paymentCode,
+    amountVnd,
+    ...extras,
+  })
   sessionStorage.setItem(SEPAY_PENDING_KEY, raw)
   try {
     localStorage.setItem(SEPAY_PENDING_KEY, raw)

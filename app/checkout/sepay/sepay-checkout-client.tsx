@@ -11,12 +11,12 @@ import { formatCurrency } from '@/lib/utils/format'
 import {
   clearSepayPendingCheckout,
   loadSepayPendingCheckout,
-  saveSepayPendingCheckout,
+  saveSepayPaymentDetails,
 } from '@/lib/sepay/pending-checkout'
 import { Copy, Loader2, CheckCircle2 } from 'lucide-react'
 import confetti from 'canvas-confetti'
 
-type SepayCreateResponse = {
+type SepayDisplay = {
   paymentCode: string
   amountVnd: number
   qrImageUrl: string
@@ -34,23 +34,30 @@ export function SepayCheckoutClient() {
   const { currentUser, authReady, language, refreshUserData, setCart } = useApp()
 
   const codeParam = searchParams.get('code')?.trim().toUpperCase() || ''
-  const stored = typeof window !== 'undefined' ? loadSepayPendingCheckout() : null
 
-  const [paymentCode, setPaymentCode] = useState(codeParam || stored?.paymentCode || '')
-  const [amountVnd, setAmountVnd] = useState(stored?.amountVnd || 0)
-  const [qrImageUrl, setQrImageUrl] = useState('')
-  const [bank, setBank] = useState<SepayCreateResponse['bank'] | null>(null)
+  const [display, setDisplay] = useState<SepayDisplay | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [paid, setPaid] = useState(false)
   const [copied, setCopied] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const initStarted = useRef(false)
 
-  const checkPaid = useCallback(async () => {
-    if (!paymentCode) return
+  const applyDisplay = useCallback((data: SepayDisplay) => {
+    setDisplay(data)
+    const stored = loadSepayPendingCheckout()
+    if (stored?.cart) {
+      saveSepayPaymentDetails(data.paymentCode, data.amountVnd, {
+        qrImageUrl: data.qrImageUrl,
+        bank: data.bank,
+      })
+    }
+  }, [])
+
+  const checkPaid = useCallback(async (code: string) => {
     try {
       const res = await fetch(
-        `/api/payments/sepay/verify?code=${encodeURIComponent(paymentCode)}`,
+        `/api/payments/sepay/verify?code=${encodeURIComponent(code)}`,
         { credentials: 'same-origin' },
       )
       if (res.ok) {
@@ -64,33 +71,43 @@ export function SepayCheckoutClient() {
     } catch {
       /* ignore */
     }
-  }, [paymentCode, refreshUserData, setCart])
+  }, [refreshUserData, setCart])
 
   useEffect(() => {
-    if (!authReady) return
+    if (!authReady || initStarted.current) return
     if (!currentUser) {
       router.push('/auth/login')
       return
     }
 
+    initStarted.current = true
+
     const init = async () => {
-      if (codeParam && stored?.paymentCode === codeParam && stored.amountVnd) {
-        setPaymentCode(codeParam)
-        setAmountVnd(stored.amountVnd)
-        if (stored.qrImageUrl) setQrImageUrl(stored.qrImageUrl)
-        if (stored.bank) setBank(stored.bank)
-        setLoading(false)
-        return
-      }
-
-      if (!stored?.cart) {
-        setError(t('checkout.sepaySessionLost', language))
-        setLoading(false)
-        return
-      }
-
       try {
-        const res = await fetch('/api/payments/sepay/create', {
+        if (codeParam) {
+          const orderRes = await fetch(
+            `/api/payments/sepay/order?code=${encodeURIComponent(codeParam)}`,
+            { credentials: 'same-origin' },
+          )
+          const orderData = await orderRes.json()
+          if (orderRes.ok && orderData.paid) {
+            setPaid(true)
+            return
+          }
+          if (orderRes.ok && orderData.paymentCode) {
+            applyDisplay(orderData as SepayDisplay)
+            return
+          }
+          throw new Error(orderData.error || t('checkout.sepaySessionLost', language))
+        }
+
+        const stored = loadSepayPendingCheckout()
+        if (!stored?.cart?.items?.length) {
+          setError(t('checkout.sepaySessionLost', language))
+          return
+        }
+
+        const createRes = await fetch('/api/payments/sepay/create', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'same-origin',
@@ -101,20 +118,13 @@ export function SepayCheckoutClient() {
             productNames: stored.productNames,
           }),
         })
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.error || 'SePay error')
-        setPaymentCode(data.paymentCode)
-        setAmountVnd(data.amountVnd)
-        setQrImageUrl(data.qrImageUrl)
-        setBank(data.bank)
-        saveSepayPendingCheckout(
-          stored.cart,
-          stored.productNames,
-          data.paymentCode,
-          data.amountVnd,
-          { qrImageUrl: data.qrImageUrl, bank: data.bank },
-        )
-        router.replace(`/checkout/sepay?code=${encodeURIComponent(data.paymentCode)}`)
+        const createData = await createRes.json()
+        if (!createRes.ok) {
+          throw new Error(createData.error || 'SePay error')
+        }
+
+        applyDisplay(createData as SepayDisplay)
+        router.replace(`/checkout/sepay?code=${encodeURIComponent(createData.paymentCode)}`)
       } catch (e) {
         setError(e instanceof Error ? e.message : t('checkout.orderFailed', language))
       } finally {
@@ -123,19 +133,20 @@ export function SepayCheckoutClient() {
     }
 
     void init()
-  }, [authReady, currentUser, codeParam, stored, language, router])
+  }, [authReady, currentUser, codeParam, language, router, applyDisplay])
 
   useEffect(() => {
-    if (!paymentCode || paid || loading) return
-    void checkPaid()
-    pollRef.current = setInterval(() => void checkPaid(), 5000)
+    if (!display?.paymentCode || paid || loading) return
+    void checkPaid(display.paymentCode)
+    pollRef.current = setInterval(() => void checkPaid(display.paymentCode), 5000)
     return () => {
       if (pollRef.current) clearInterval(pollRef.current)
     }
-  }, [paymentCode, paid, loading, checkPaid])
+  }, [display?.paymentCode, paid, loading, checkPaid])
 
   const copyCode = async () => {
-    await navigator.clipboard.writeText(paymentCode)
+    if (!display?.paymentCode) return
+    await navigator.clipboard.writeText(display.paymentCode)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -166,11 +177,11 @@ export function SepayCheckoutClient() {
     )
   }
 
-  if (error) {
+  if (error || !display) {
     return (
       <AppLayout>
         <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4">
-          <p className="text-red-400 mb-4">{error}</p>
+          <p className="text-red-400 mb-4">{error || t('checkout.orderFailed', language)}</p>
           <Link href="/checkout" className="text-gray-400 hover:text-white">
             {t('checkout.backCart', language)}
           </Link>
@@ -189,15 +200,13 @@ export function SepayCheckoutClient() {
           <div className="glass-dark rounded-2xl p-6 border border-white/10 space-y-5">
             <div className="text-center">
               <p className="text-gray-400 text-sm mb-1">{t('checkout.amount', language)}</p>
-              <p className="text-3xl font-bold text-white">
-                {formatCurrency(amountVnd || stored?.amountVnd || 0)}
-              </p>
+              <p className="text-3xl font-bold text-white">{formatCurrency(display.amountVnd)}</p>
             </div>
 
-            {qrImageUrl && (
+            {display.qrImageUrl && (
               <div className="flex justify-center">
                 <Image
-                  src={qrImageUrl}
+                  src={display.qrImageUrl}
                   alt="VietQR"
                   width={240}
                   height={240}
@@ -207,27 +216,25 @@ export function SepayCheckoutClient() {
               </div>
             )}
 
-            {bank && (
-              <div className="text-sm space-y-2 border-t border-white/10 pt-4">
-                <div className="flex justify-between gap-2">
-                  <span className="text-gray-400">{t('checkout.sepayBank', language)}</span>
-                  <span className="text-white text-right">{bank.bankName}</span>
-                </div>
-                <div className="flex justify-between gap-2">
-                  <span className="text-gray-400">{t('checkout.sepayAccount', language)}</span>
-                  <span className="text-white font-mono">{bank.accountNumber}</span>
-                </div>
-                <div className="flex justify-between gap-2">
-                  <span className="text-gray-400">{t('checkout.sepayAccountName', language)}</span>
-                  <span className="text-white text-right">{bank.accountName}</span>
-                </div>
+            <div className="text-sm space-y-2 border-t border-white/10 pt-4">
+              <div className="flex justify-between gap-2">
+                <span className="text-gray-400">{t('checkout.sepayBank', language)}</span>
+                <span className="text-white text-right">{display.bank.bankName}</span>
               </div>
-            )}
+              <div className="flex justify-between gap-2">
+                <span className="text-gray-400">{t('checkout.sepayAccount', language)}</span>
+                <span className="text-white font-mono">{display.bank.accountNumber}</span>
+              </div>
+              <div className="flex justify-between gap-2">
+                <span className="text-gray-400">{t('checkout.sepayAccountName', language)}</span>
+                <span className="text-white text-right">{display.bank.accountName}</span>
+              </div>
+            </div>
 
             <div className="bg-netflix-red/10 border border-netflix-red/40 rounded-xl p-4">
               <p className="text-gray-400 text-xs mb-1">{t('checkout.sepayTransferMemo', language)}</p>
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xl font-mono font-bold text-netflix-red">{paymentCode}</span>
+                <span className="text-xl font-mono font-bold text-netflix-red">{display.paymentCode}</span>
                 <button
                   type="button"
                   onClick={() => void copyCode()}
@@ -242,7 +249,7 @@ export function SepayCheckoutClient() {
             <p className="text-gray-500 text-xs">{t('checkout.sepayWaiting', language)}</p>
             <button
               type="button"
-              onClick={() => void checkPaid()}
+              onClick={() => void checkPaid(display.paymentCode)}
               className="w-full btn-primary-red py-3 rounded-lg"
             >
               {t('checkout.sepayCheckPaid', language)}

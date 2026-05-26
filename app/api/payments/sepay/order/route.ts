@@ -1,0 +1,52 @@
+import { NextResponse } from 'next/server'
+import { getSessionFromRequest } from '@/lib/auth/session-cookie'
+import {
+  buildVietQrImageUrl,
+  getSepayBankDisplay,
+  isSepayConfigured,
+} from '@/lib/sepay/client'
+import { isSepayOrderAlreadyCompleted, loadSepayPendingFromDb } from '@/lib/sepay/pending-store'
+
+/** Lấy thông tin QR/CK theo mã — dùng khi reload trang SePay */
+export async function GET(request: Request) {
+  const session = getSessionFromRequest(request)
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const code = new URL(request.url).searchParams.get('code')?.trim().toUpperCase()
+  if (!code) {
+    return NextResponse.json({ error: 'Missing code' }, { status: 400 })
+  }
+
+  if (!isSepayConfigured()) {
+    return NextResponse.json({ error: 'SePay not configured' }, { status: 503 })
+  }
+
+  const pending = await loadSepayPendingFromDb(code)
+  if (!pending) {
+    const completed = await isSepayOrderAlreadyCompleted(code)
+    if (completed) {
+      return NextResponse.json({ paid: true, paymentCode: code })
+    }
+    return NextResponse.json(
+      {
+        error:
+          'Không tìm thấy đơn chờ với mã này (hết hạn hoặc chưa tạo). Quay lại checkout và thử lại.',
+      },
+      { status: 404 },
+    )
+  }
+
+  if (pending.userId !== session.userId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  return NextResponse.json({
+    paymentCode: code,
+    amountVnd: pending.amountVnd,
+    qrImageUrl: buildVietQrImageUrl(pending.amountVnd, code),
+    bank: getSepayBankDisplay(),
+    paid: false,
+  })
+}

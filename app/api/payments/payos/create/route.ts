@@ -10,6 +10,7 @@ import {
 import { setPayosPendingCookie } from '@/lib/payos/pending-cookie'
 import { savePayosPendingToDb } from '@/lib/payos/pending-store'
 import { isSupabaseConfigured } from '@/lib/auth/login'
+import { isDemoCheckoutAllowed } from '@/lib/payments/demo-checkout'
 import { getSiteUrl } from '@/lib/site'
 import type { Cart } from '@/lib/types'
 
@@ -26,7 +27,7 @@ export async function POST(request: Request) {
 
     if (!isPayosConfigured()) {
       return NextResponse.json(
-        { error: language === 'vi' ? 'Chưa cấu hình PayOS' : 'PayOS not configured', demo: true },
+        { error: language === 'vi' ? 'Chưa cấu hình PayOS' : 'PayOS not configured', ...(isDemoCheckoutAllowed() ? { demo: true } : {}) },
         { status: 503 },
       )
     }

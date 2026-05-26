@@ -96,9 +96,9 @@ export function ProductPurchasePanel({
       userId: userId || 'user-1',
       items: [cartItem],
       subtotal: price,
-      taxAmount: price * 0.1,
+      taxAmount: 0,
       discount: 0,
-      total: price * 1.1,
+      total: price,
       updatedAt: new Date(),
     })
     router.push('/cart')
