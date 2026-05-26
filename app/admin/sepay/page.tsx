@@ -42,13 +42,22 @@ export default function AdminSepayPage() {
   const [summary, setSummary] = useState<Summary | null>(null)
   const [dbSummary, setDbSummary] = useState<DbSummary | null>(null)
   const [transactions, setTransactions] = useState<Txn[]>([])
+  const [tokenOk, setTokenOk] = useState<boolean | null>(null)
 
   const load = useCallback(async () => {
     if (!currentUser) return
     setLoading(true)
     setError('')
     setApiError('')
+    setTokenOk(null)
     try {
+      const verifyRes = await adminFetch('/api/admin/sepay/verify', currentUser.id)
+      const verifyData = await verifyRes.json()
+      setTokenOk(Boolean(verifyData.ok))
+      if (!verifyData.ok && verifyData.error) {
+        setApiError(verifyData.error)
+      }
+
       const res = await adminFetch(`/api/admin/sepay/transactions?days=${days}&limit=300`, currentUser.id)
       const data = await res.json()
       if (!res.ok) {

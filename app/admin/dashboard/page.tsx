@@ -1,336 +1,362 @@
 'use client'
 
-import React, { useMemo } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { AppLayout } from '@/components/app-layout'
+import { AdminShell, adminFetch } from '@/components/admin/admin-shell'
 import { useApp } from '@/lib/context'
-import { mockUsers, mockInvoices, mockSubscriptions, mockSupportTickets, mockProducts } from '@/lib/mock-data'
-import { formatCurrency, formatDate } from '@/lib/utils/format'
+import { t } from '@/lib/translations'
+import { formatCurrency, formatDateTime } from '@/lib/utils/format'
+import { invoiceStatusLabel } from '@/lib/invoices/display'
+import { supportStatusLabel } from '@/lib/support/status-labels'
+import type { SupportTicket } from '@/lib/types'
 import { motion } from 'framer-motion'
 import {
-  LineChart,
-  Line,
-  BarChart,
+  Users,
+  KeyRound,
+  DollarSign,
+  MessageSquare,
+  Clock,
+  Package,
+  Database,
+  Loader2,
+  ArrowRight,
+  Landmark,
+} from 'lucide-react'
+import {
   Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
 } from 'recharts'
-import { Users, DollarSign, TrendingUp, AlertCircle, ShoppingBag, MessageSquare } from 'lucide-react'
+
+type DashboardStats = {
+  customers: number
+  activeRentals: number
+  revenueThisMonth: number
+  revenueTotal: number
+  openTickets: number
+  sepayPending: number
+  productsActive: number
+  poolSlotsFree: number
+  monthlyRevenue: Array<{ month: string; revenue: number; orders: number }>
+  recentOrders: Array<{
+    id: string
+    invoiceNumber: string | null
+    amount: number
+    status: string
+    paymentMethod: string
+    createdAt: string
+    userEmail: string | null
+    userName: string | null
+  }>
+  recentTickets: Array<{
+    id: string
+    subject: string
+    status: string
+    priority: string
+    createdAt: string
+    userEmail: string | null
+    userName: string | null
+  }>
+}
+
+function mapInvoiceStatus(status: string): string {
+  if (status === 'completed') return 'paid'
+  return status
+}
+
+function formatMonthLabel(monthKey: string, language: 'vi' | 'en') {
+  const [y, m] = monthKey.split('-').map(Number)
+  const d = new Date(y, (m || 1) - 1, 1)
+  return d.toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US', {
+    month: 'short',
+    year: '2-digit',
+  })
+}
 
 export default function AdminDashboardPage() {
-  const { currentUser } = useApp()
+  const { currentUser, language } = useApp()
+  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
-  if (!currentUser || currentUser.role !== 'admin') {
-    return (
-      <AppLayout>
-        <div className="container mx-auto px-4 py-20 text-center">
-          <p className="text-white mb-4">Access denied. Admin account required.</p>
-          <Link href="/" className="bg-netflix-red hover:bg-red-700 text-white px-6 py-2 rounded-lg">
-            Back Home
-          </Link>
-        </div>
-      </AppLayout>
-    )
-  }
-
-  const stats = useMemo(() => {
-    const paidInvoices = mockInvoices.filter(i => i.status === 'paid')
-    const totalRevenue = paidInvoices.reduce((sum, i) => sum + i.totalAmount, 0)
-    const activeSubscriptions = mockSubscriptions.filter(s => s.status === 'active').length
-    const openTickets = mockSupportTickets.filter(t => t.status === 'open' || t.status === 'in_progress').length
-    
-    return {
-      totalRevenue,
-      totalUsers: mockUsers.length,
-      activeSubscriptions,
-      totalOrders: mockInvoices.length,
-      avgOrderValue: totalRevenue / paidInvoices.length,
-      openTickets,
+  const load = useCallback(async () => {
+    if (!currentUser) return
+    setLoading(true)
+    setError('')
+    try {
+      const res = await adminFetch('/api/admin/dashboard', currentUser.id)
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed')
+      setStats(data.stats)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error')
+    } finally {
+      setLoading(false)
     }
-  }, [])
+  }, [currentUser])
 
-  const chartData = [
-    { name: 'Jan', revenue: 8000, users: 45, orders: 120 },
-    { name: 'Feb', revenue: 12000, users: 68, orders: 200 },
-    { name: 'Mar', revenue: 9800, users: 54, orders: 150 },
-    { name: 'Apr', revenue: 15000, users: 92, orders: 280 },
-    { name: 'May', revenue: 18000, users: 110, orders: 320 },
-    { name: 'Jun', revenue: 22000, users: 135, orders: 380 },
-  ]
+  useEffect(() => {
+    void load()
+  }, [load])
 
-  const userDistribution = [
-    { name: 'Customers', value: mockUsers.filter(u => u.role === 'customer').length, color: '#3b82f6' },
-    { name: 'Merchants', value: mockUsers.filter(u => u.role === 'merchant').length, color: '#10b981' },
-    { name: 'Admins', value: mockUsers.filter(u => u.role === 'admin').length, color: '#8b5cf6' },
-  ]
+  const chartData = useMemo(() => {
+    if (!stats) return []
+    return stats.monthlyRevenue.map((row) => ({
+      name: formatMonthLabel(row.month, language),
+      revenue: row.revenue,
+      orders: row.orders,
+    }))
+  }, [stats, language])
 
-  const invoiceStatusData = [
-    { name: 'Paid', value: mockInvoices.filter(i => i.status === 'paid').length, color: '#10b981' },
-    { name: 'Pending', value: mockInvoices.filter(i => i.status === 'pending').length, color: '#f59e0b' },
-    { name: 'Failed', value: mockInvoices.filter(i => i.status === 'failed').length, color: '#ef4444' },
-  ]
+  const quickLinks = [
+    { href: '/admin/products', labelKey: 'admin.productsManage', icon: Package },
+    { href: '/admin/pool', labelKey: 'admin.pool', icon: Database },
+    { href: '/admin/rentals', labelKey: 'admin.rentals', icon: KeyRound },
+    { href: '/admin/support', labelKey: 'admin.support', icon: MessageSquare },
+    { href: '/admin/sepay', labelKey: 'admin.sepay', icon: Landmark },
+    { href: '/admin/ban-reasons', labelKey: 'admin.banReasons', icon: Users },
+  ] as const
 
   return (
-    <AppLayout>
-      <section className="bg-netflix-black min-h-screen py-12">
-        <div className="container mx-auto px-4">
-          {/* Header */}
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-12"
-          >
-            <h1 className="text-4xl font-bold text-white mb-2">Admin Dashboard</h1>
-            <p className="text-gray-400">Platform overview and analytics</p>
-          </motion.div>
+    <AdminShell>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-white">{t('admin.title', language)}</h1>
+        <p className="text-gray-400 text-sm mt-1">
+          {t('admin.dashboardSubtitle', language)}
+          {currentUser?.fullName ? ` · ${currentUser.fullName}` : ''}
+        </p>
+      </div>
 
-          {/* Key Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mb-12">
-            {[
-              { icon: DollarSign, label: 'Total Revenue', value: formatCurrency(stats.totalRevenue), color: 'green' },
-              { icon: Users, label: 'Total Users', value: stats.totalUsers, color: 'blue' },
-              { icon: TrendingUp, label: 'Active Subscriptions', value: stats.activeSubscriptions, color: 'purple' },
-              { icon: ShoppingBag, label: 'Total Orders', value: stats.totalOrders, color: 'pink' },
-              { icon: AlertCircle, label: 'Avg Order Value', value: formatCurrency(stats.avgOrderValue), color: 'yellow' },
-              { icon: MessageSquare, label: 'Open Tickets', value: stats.openTickets, color: 'red' },
-            ].map((stat, index) => {
-              const Icon = stat.icon
-              return (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="glass-dark rounded-2xl p-6 border border-white/10"
-                >
-                  <div className={`p-2 rounded-lg w-fit mb-3 ${
-                    stat.color === 'green' && 'bg-green-500/20' ||
-                    stat.color === 'blue' && 'bg-blue-500/20' ||
-                    stat.color === 'purple' && 'bg-purple-500/20' ||
-                    stat.color === 'pink' && 'bg-pink-500/20' ||
-                    stat.color === 'yellow' && 'bg-yellow-500/20' ||
-                    stat.color === 'red' && 'bg-red-500/20'
-                  }`}>
-                    <Icon size={20} className={
-                      stat.color === 'green' && 'text-green-400' ||
-                      stat.color === 'blue' && 'text-blue-400' ||
-                      stat.color === 'purple' && 'text-purple-400' ||
-                      stat.color === 'pink' && 'text-pink-400' ||
-                      stat.color === 'yellow' && 'text-yellow-400' ||
-                      stat.color === 'red' && 'text-red-400'
-                    } />
-                  </div>
-                  <p className="text-gray-400 text-xs mb-1">{stat.label}</p>
-                  <p className="text-white font-bold text-lg">{stat.value}</p>
-                </motion.div>
-              )
-            })}
+      {loading && (
+        <div className="flex justify-center py-20">
+          <Loader2 className="animate-spin text-netflix-red" size={40} />
+        </div>
+      )}
+
+      {error && !loading && (
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-400 mb-6">
+          {error}
+        </div>
+      )}
+
+      {!loading && stats && (
+        <>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <StatCard
+              icon={<Users className="text-blue-400" size={22} />}
+              label={t('admin.statCustomers', language)}
+              value={String(stats.customers)}
+            />
+            <StatCard
+              icon={<KeyRound className="text-green-400" size={22} />}
+              label={t('admin.statActiveRentals', language)}
+              value={String(stats.activeRentals)}
+            />
+            <StatCard
+              icon={<DollarSign className="text-netflix-red" size={22} />}
+              label={t('admin.statRevenueMonth', language)}
+              value={formatCurrency(stats.revenueThisMonth)}
+              sub={t('admin.statRevenueTotal', language).replace(
+                '{amount}',
+                formatCurrency(stats.revenueTotal),
+              )}
+            />
+            <StatCard
+              icon={<MessageSquare className="text-amber-400" size={22} />}
+              label={t('admin.statOpenTickets', language)}
+              value={String(stats.openTickets)}
+              highlight={stats.openTickets > 0}
+            />
+            <StatCard
+              icon={<Clock className="text-yellow-400" size={22} />}
+              label={t('admin.statSepayPending', language)}
+              value={String(stats.sepayPending)}
+              highlight={stats.sepayPending > 0}
+            />
+            <StatCard
+              icon={<Package className="text-purple-400" size={22} />}
+              label={t('admin.statProducts', language)}
+              value={String(stats.productsActive)}
+            />
+            <StatCard
+              icon={<Database className="text-cyan-400" size={22} />}
+              label={t('admin.statPoolSlotsFree', language)}
+              value={String(stats.poolSlotsFree)}
+            />
           </div>
 
-          {/* Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-12">
-            {/* Revenue & Orders Trend */}
+          {chartData.some((d) => d.revenue > 0) && (
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="glass-dark rounded-2xl p-6 border border-white/10"
+              className="glass-dark rounded-2xl p-6 border border-white/10 mb-8"
             >
-              <h2 className="text-xl font-bold text-white mb-6">Revenue & Orders Trend</h2>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#404040" />
-                  <XAxis stroke="#808080" />
-                  <YAxis stroke="#808080" />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #E50914' }}
-                    labelStyle={{ color: '#fff' }}
-                  />
-                  <Legend />
-                  <Line type="monotone" dataKey="revenue" stroke="#E50914" name="Revenue (VND)" dot={{ fill: '#E50914' }} />
-                  <Line type="monotone" dataKey="orders" stroke="#10b981" name="Orders" dot={{ fill: '#10b981' }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </motion.div>
-
-            {/* User Growth */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="glass-dark rounded-2xl p-6 border border-white/10"
-            >
-              <h2 className="text-xl font-bold text-white mb-6">User Growth</h2>
-              <ResponsiveContainer width="100%" height={300}>
+              <h2 className="text-lg font-bold text-white mb-4">
+                {t('admin.revenueChartTitle', language)}
+              </h2>
+              <ResponsiveContainer width="100%" height={260}>
                 <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#404040" />
-                  <XAxis stroke="#808080" />
-                  <YAxis stroke="#808080" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                  <XAxis dataKey="name" stroke="#888" tick={{ fontSize: 12 }} />
+                  <YAxis stroke="#888" tick={{ fontSize: 12 }} />
                   <Tooltip
-                    contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #E50914' }}
-                    labelStyle={{ color: '#fff' }}
+                    formatter={(value: number, name: string) => [
+                      name === 'revenue' ? formatCurrency(value) : value,
+                      name === 'revenue'
+                        ? t('admin.revenue', language)
+                        : t('admin.orders', language),
+                    ]}
+                    contentStyle={{ backgroundColor: '#141414', border: '1px solid #333' }}
                   />
-                  <Legend />
-                  <Bar dataKey="users" fill="#3b82f6" name="New Users" />
+                  <Bar
+                    dataKey="revenue"
+                    fill="#E50914"
+                    name="revenue"
+                    radius={[4, 4, 0, 0]}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </motion.div>
+          )}
 
-            {/* User Distribution */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-              className="glass-dark rounded-2xl p-6 border border-white/10"
-            >
-              <h2 className="text-xl font-bold text-white mb-6">User Distribution</h2>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={userDistribution}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, value }) => `${name}: ${value}`}
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {userDistribution.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </motion.div>
-
-            {/* Invoice Status */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
-              className="glass-dark rounded-2xl p-6 border border-white/10"
-            >
-              <h2 className="text-xl font-bold text-white mb-6">Invoice Status</h2>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={invoiceStatusData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, value }) => `${name}: ${value}`}
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {invoiceStatusData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </motion.div>
-          </div>
-
-          {/* Recent Activities */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Recent Orders */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7 }}
-              className="glass-dark rounded-2xl p-6 border border-white/10"
-            >
-              <h2 className="text-xl font-bold text-white mb-6">Recent Orders</h2>
-              <div className="space-y-3">
-                {mockInvoices.slice(0, 5).map((invoice) => (
-                  <div key={invoice.id} className="flex items-center justify-between p-3 bg-black/30 rounded-lg">
-                    <div>
-                      <p className="text-white font-semibold text-sm">{invoice.id}</p>
-                      <p className="text-gray-400 text-xs">{formatDate(invoice.invoiceDate)}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-white font-bold text-sm">{formatCurrency(invoice.totalAmount)}</p>
-                      <div className={`text-xs font-semibold px-2 py-1 rounded w-fit ${
-                        invoice.status === 'paid' && 'bg-green-500/20 text-green-400' ||
-                        invoice.status === 'pending' && 'bg-yellow-500/20 text-yellow-400' ||
-                        'bg-red-500/20 text-red-400'
-                      }`}>
-                        {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-
-            {/* Top Products */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8 }}
-              className="glass-dark rounded-2xl p-6 border border-white/10"
-            >
-              <h2 className="text-xl font-bold text-white mb-6">Top Products</h2>
-              <div className="space-y-3">
-                {mockProducts.slice(0, 5).map((product, index) => (
-                  <div key={product.id} className="flex items-center justify-between p-3 bg-black/30 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded bg-netflix-red/20 flex items-center justify-center">
-                        <span className="text-netflix-red font-bold text-xs">{index + 1}</span>
-                      </div>
-                      <div>
-                        <p className="text-white font-semibold text-sm">{product.name}</p>
-                      </div>
-                    </div>
-                    <p className="text-white font-bold text-sm">{formatCurrency(product.basePrice)}</p>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          </div>
-
-          {/* Admin Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-12">
-            {[
-              { label: 'Marketplace products', href: '/admin/products', color: 'red' },
-              { label: 'Account pool', href: '/admin/pool', color: 'blue' },
-              { label: 'Active rentals', href: '/admin/rentals', color: 'green' },
-              { label: 'Ban reasons', href: '/admin/ban-reasons', color: 'purple' },
-              { label: 'Marketplace', href: '/marketplace', color: 'red' },
-            ].map((action, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.9 + index * 0.05 }}
-              >
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <section className="glass-dark rounded-2xl p-6 border border-white/10">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-white">
+                  {t('admin.recentOrders', language)}
+                </h2>
                 <Link
-                  href={action.href}
-                  className={`block p-6 rounded-2xl border text-center font-semibold transition-all ${
-                    action.color === 'blue' && 'bg-blue-500/10 border-blue-500/30 text-blue-400 hover:border-blue-500/50' ||
-                    action.color === 'green' && 'bg-green-500/10 border-green-500/30 text-green-400 hover:border-green-500/50' ||
-                    action.color === 'purple' && 'bg-purple-500/10 border-purple-500/30 text-purple-400 hover:border-purple-500/50' ||
-                    action.color === 'red' && 'bg-red-500/10 border-red-500/30 text-red-400 hover:border-red-500/50'
-                  }`}
+                  href="/admin/sepay"
+                  className="text-netflix-red text-sm hover:underline inline-flex items-center gap-1"
                 >
-                  {action.label}
+                  SePay <ArrowRight size={14} />
                 </Link>
-              </motion.div>
-            ))}
+              </div>
+              {stats.recentOrders.length === 0 ? (
+                <p className="text-gray-500 text-sm">{t('admin.noRecentOrders', language)}</p>
+              ) : (
+                <ul className="space-y-3">
+                  {stats.recentOrders.map((order) => (
+                    <li
+                      key={order.id}
+                      className="flex flex-wrap justify-between gap-2 p-3 rounded-lg bg-black/30 border border-white/5"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-white font-mono text-sm">
+                          {order.invoiceNumber || order.id.slice(0, 8)}
+                        </p>
+                        <p className="text-gray-500 text-xs truncate">
+                          {order.userName || order.userEmail || '—'}
+                        </p>
+                        <p className="text-gray-600 text-xs">
+                          {formatDateTime(order.createdAt, language)} · {order.paymentMethod}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-white font-semibold">{formatCurrency(order.amount)}</p>
+                        <p className="text-xs text-gray-400">
+                          {invoiceStatusLabel(mapInvoiceStatus(order.status), language)}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <section className="glass-dark rounded-2xl p-6 border border-white/10">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-white">
+                  {t('admin.recentTickets', language)}
+                </h2>
+                <Link
+                  href="/admin/support"
+                  className="text-netflix-red text-sm hover:underline inline-flex items-center gap-1"
+                >
+                  {t('admin.viewAll', language)} <ArrowRight size={14} />
+                </Link>
+              </div>
+              {stats.recentTickets.length === 0 ? (
+                <p className="text-gray-500 text-sm">{t('admin.noOpenTickets', language)}</p>
+              ) : (
+                <ul className="space-y-3">
+                  {stats.recentTickets.map((ticket) => (
+                    <li key={ticket.id}>
+                      <Link
+                        href="/admin/support"
+                        className="block p-3 rounded-lg bg-black/30 border border-white/5 hover:border-netflix-red/40 transition-colors"
+                      >
+                        <p className="text-white font-medium text-sm truncate">{ticket.subject}</p>
+                        <p className="text-gray-500 text-xs mt-0.5">
+                          {ticket.userName || ticket.userEmail || '—'} ·{' '}
+                          {formatDateTime(ticket.createdAt, language)}
+                        </p>
+                        <span className="inline-block mt-1 text-xs text-amber-400">
+                          {supportStatusLabel(ticket.status as SupportTicket['status'], language)}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
           </div>
-        </div>
-      </section>
-    </AppLayout>
+
+          <section>
+            <h2 className="text-lg font-bold text-white mb-4">
+              {t('admin.quickActions', language)}
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+              {quickLinks.map(({ href, labelKey, icon: Icon }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className="glass-dark rounded-xl p-4 border border-white/10 hover:border-netflix-red/50 transition-colors text-center group"
+                >
+                  <Icon
+                    size={22}
+                    className="mx-auto mb-2 text-gray-400 group-hover:text-netflix-red"
+                  />
+                  <span className="text-sm text-gray-300 group-hover:text-white">
+                    {t(labelKey, language)}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        </>
+      )}
+    </AdminShell>
+  )
+}
+
+function StatCard({
+  icon,
+  label,
+  value,
+  sub,
+  highlight,
+}: {
+  icon: React.ReactNode
+  label: string
+  value: string
+  sub?: string
+  highlight?: boolean
+}) {
+  return (
+    <div
+      className={`glass-dark rounded-xl p-4 border ${
+        highlight ? 'border-amber-500/40 bg-amber-500/5' : 'border-white/10'
+      }`}
+    >
+      <div className="mb-2">{icon}</div>
+      <p className="text-gray-500 text-xs mb-1">{label}</p>
+      <p className="text-white text-xl font-bold">{value}</p>
+      {sub && <p className="text-gray-600 text-xs mt-1">{sub}</p>}
+    </div>
   )
 }

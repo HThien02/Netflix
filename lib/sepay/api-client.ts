@@ -1,9 +1,13 @@
-/** SePay API production — https://userapi.sepay.vn/v2 */
+/** SePay API v2 — https://userapi.sepay.vn/v2 (hoặc sandbox) */
 
 import { normalizeSepayTransactionStorageId } from '@/lib/sepay/transaction-id'
 import { dateMinDaysAgo } from '@/lib/sepay/transaction-stats'
-
-const SEPAY_API_V2 = 'https://userapi.sepay.vn/v2'
+import {
+  getSepayApiBaseUrl,
+  getSepayApiToken,
+  isSepayApiTokenConfigured,
+  sepayApiUnauthorizedHint,
+} from '@/lib/sepay/env'
 
 export type SepayApiTransaction = {
   id: string
@@ -24,7 +28,7 @@ export type SepayListResult = {
 }
 
 export function isSepayApiConfigured(): boolean {
-  return Boolean(process.env.SEPAY_API_TOKEN?.trim())
+  return isSepayApiTokenConfigured()
 }
 
 function mapV2Row(row: Record<string, unknown>): SepayApiTransaction {
@@ -50,18 +54,24 @@ async function fetchSepayPage(
   token: string,
   params: URLSearchParams,
 ): Promise<{ rows: SepayApiTransaction[]; hasMore: boolean; error?: string; httpStatus?: number }> {
-  const res = await fetch(`${SEPAY_API_V2}/transactions?${params.toString()}`, {
+  const baseUrl = getSepayApiBaseUrl()
+  const res = await fetch(`${baseUrl}/transactions?${params.toString()}`, {
     headers: { Authorization: `Bearer ${token}` },
     cache: 'no-store',
   })
 
   if (!res.ok) {
     const text = await res.text().catch(() => '')
+    const detail = text ? `: ${text.slice(0, 180)}` : ''
+    const error =
+      res.status === 401
+        ? `${sepayApiUnauthorizedHint()}${detail}`
+        : `SePay API HTTP ${res.status}${detail}`
     return {
       rows: [],
       hasMore: false,
       httpStatus: res.status,
-      error: `SePay API HTTP ${res.status}${text ? `: ${text.slice(0, 180)}` : ''}`,
+      error,
     }
   }
 
@@ -94,7 +104,7 @@ async function listSepayTransactionsV2(options: {
   amountIn?: number
   searchQuery?: string
 }): Promise<SepayListResult> {
-  const token = process.env.SEPAY_API_TOKEN?.trim()
+  const token = getSepayApiToken()
   if (!token) return { transactions: [], error: 'SEPAY_API_TOKEN chưa cấu hình' }
 
   const targetLimit = Math.min(options.limit ?? 100, 500)
