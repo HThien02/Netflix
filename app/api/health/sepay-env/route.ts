@@ -14,21 +14,23 @@ export async function GET(request: Request) {
   }
 
   const token = process.env.SEPAY_API_TOKEN?.trim() || ''
-  const webhookSecret = process.env.SEPAY_WEBHOOK_SECRET?.trim() || ''
+  const webhookApiKey = process.env.SEPAY_WEBHOOK_API_KEY?.trim() || ''
+  const webhookAuth = (process.env.SEPAY_WEBHOOK_AUTH || 'apikey').toLowerCase()
 
   return NextResponse.json({
     sepayBankConfigured: isSepayConfigured(),
     sepayApiConfigured: isSepayApiConfigured(),
     sepayApiTokenLength: token.length,
-    sepayWebhookSecretLength: webhookSecret.length,
+    sepayWebhookApiKeyLength: webhookApiKey.length,
+    sepayWebhookAuth: webhookAuth,
     hasSupabaseServiceRole: hasSupabaseServiceRole(),
     vercelEnv: process.env.VERCEL_ENV || null,
     appUrl: process.env.APP_URL || null,
     hint:
       token.length === 0
         ? 'Thiếu SEPAY_API_TOKEN trên server.'
-        : webhookSecret.length === 0
-          ? 'Thiếu SEPAY_WEBHOOK_SECRET trên server.'
+        : webhookApiKey.length === 0
+          ? 'Thiếu SEPAY_WEBHOOK_API_KEY — đặt cùng giá trị API Key trên my.sepay.vn (webhook → Bảo mật).'
           : 'SePay env OK.',
   })
 }
