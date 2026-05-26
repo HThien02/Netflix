@@ -1,9 +1,26 @@
-import { createAdminClient } from '@/lib/supabase/admin'
+import { createAdminClient, hasSupabaseServiceRole } from '@/lib/supabase/admin'
 import { isSupabaseConfigured } from '@/lib/auth/login'
 import type { PayosPendingPayload } from '@/lib/payos/pending-cookie'
 
-export async function savePayosPendingToDb(payload: PayosPendingPayload, amountVnd: number) {
-  if (!isSupabaseConfigured()) return false
+export type PayosPendingSaveResult =
+  | { ok: true }
+  | { ok: false; error: string; hint?: string }
+
+export async function savePayosPendingToDb(
+  payload: PayosPendingPayload,
+  amountVnd: number,
+): Promise<PayosPendingSaveResult> {
+  if (!isSupabaseConfigured()) {
+    return { ok: false, error: 'Supabase not configured' }
+  }
+  if (!hasSupabaseServiceRole()) {
+    return {
+      ok: false,
+      error: 'Missing SUPABASE_SERVICE_ROLE_KEY',
+      hint:
+        'Thêm service_role key vào .env.local và Vercel (Supabase → Settings → API). Anon/publishable key không ghi được payos_pending_orders khi bật RLS.',
+    }
+  }
   const supabase = createAdminClient()
   const { error } = await supabase.from('payos_pending_orders').upsert(
     {
@@ -19,10 +36,18 @@ export async function savePayosPendingToDb(payload: PayosPendingPayload, amountV
     { onConflict: 'order_code' },
   )
   if (error) {
-    console.error('[payos pending] save failed', error.message)
-    return false
+    console.error('[payos pending] save failed', error.message, error.code)
+    const hint =
+      error.code === '42501'
+        ? 'RLS chặn ghi — cần SUPABASE_SERVICE_ROLE_KEY (không dùng anon/publishable).'
+        : error.code === '23503'
+          ? 'user_id không có trong bảng users — đăng nhập/đăng ký lại qua Supabase.'
+          : error.code === '42P01'
+            ? 'Chạy migration payos_pending_orders trên Supabase.'
+            : undefined
+    return { ok: false, error: error.message, hint }
   }
-  return true
+  return { ok: true }
 }
 
 export async function loadPayosPendingFromDb(

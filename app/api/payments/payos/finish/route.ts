@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { getSessionFromRequest } from '@/lib/auth/session-cookie'
 import {
   confirmPayosPaid,
+  formatPayosDescription,
   isPayosReturnCancelled,
   isPayosConfigured,
 } from '@/lib/payos/client'
@@ -105,14 +106,23 @@ export async function POST(request: Request) {
 
     const { paid, data } = await confirmPayosPaid(orderCode, { code, status, cancel })
     if (!paid) {
+      const remaining = Number(data?.amountRemaining ?? data?.amount ?? 0)
+      const memo = formatPayosDescription(orderCode)
       return NextResponse.json(
         {
           error:
             language === 'vi'
-              ? 'PayOS chưa xác nhận thanh toán. Thử tải lại trang sau 1 phút.'
-              : 'PayOS has not confirmed payment yet. Retry in a minute.',
+              ? remaining > 0
+                ? `PayOS chưa nhận tiền (còn ${remaining.toLocaleString('vi-VN')}đ). Nội dung CK: "${memo}". Đợi 1–5 phút rồi bấm Thử lại.`
+                : 'PayOS chưa xác nhận thanh toán. Thử lại sau 1 phút.'
+              : remaining > 0
+                ? `PayOS: ${remaining} VND remaining. Transfer memo must be exactly "${memo}". Retry in 1–5 minutes.`
+                : 'PayOS has not confirmed payment yet. Retry in a minute.',
           payosStatus: data?.status,
-          amountPaid: data?.amountPaid,
+          amountPaid: data?.amountPaid ?? 0,
+          amountRemaining: remaining,
+          transferMemo: memo,
+          orderCode,
         },
         { status: 402 },
       )

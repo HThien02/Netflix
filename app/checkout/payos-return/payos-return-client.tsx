@@ -47,6 +47,12 @@ export function PayosReturnClient() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [retrying, setRetrying] = useState(false)
+  const [payosDetail, setPayosDetail] = useState<{
+    status?: string
+    amountRemaining?: number
+    transferMemo?: string
+    orderCode?: number
+  } | null>(null)
   const started = useRef(false)
 
   const runFinish = async () => {
@@ -85,6 +91,32 @@ export function PayosReturnClient() {
 
       if (!res.ok) {
         setError(data.error || t('checkout.payosNotPaid', language))
+        if (data.orderCode || data.payosStatus || data.amountRemaining != null) {
+          setPayosDetail({
+            orderCode: data.orderCode ?? orderCode,
+            status: data.payosStatus,
+            amountRemaining: data.amountRemaining,
+            transferMemo: data.transferMemo,
+          })
+        } else {
+          try {
+            const v = await fetch(
+              `/api/payments/payos/verify?orderCode=${orderCode}`,
+              { credentials: 'same-origin' },
+            )
+            const vd = await v.json()
+            if (!vd.paid) {
+              setPayosDetail({
+                orderCode,
+                status: vd.status,
+                amountRemaining: vd.amountRemaining,
+                transferMemo: vd.transferMemo,
+              })
+            }
+          } catch {
+            /* ignore */
+          }
+        }
         return
       }
 
@@ -132,8 +164,35 @@ export function PayosReturnClient() {
             <p className="text-red-400">{error}</p>
             <p className="text-gray-600 text-xs font-mono break-all">
               URL: code={searchParams.get('code') ?? '—'} status={searchParams.get('status') ?? '—'}{' '}
-              orderCode={searchParams.get('orderCode') ?? '—'}
+              orderCode={searchParams.get('orderCode') ?? payosDetail?.orderCode ?? '—'}
             </p>
+            {payosDetail && (
+              <div className="text-left text-sm text-gray-400 bg-white/5 rounded-lg p-4 space-y-2">
+                <p>
+                  PayOS: <span className="text-amber-400">{payosDetail.status || 'PENDING'}</span>
+                  {payosDetail.amountRemaining != null && (
+                    <>
+                      {' '}
+                      — còn{' '}
+                      <span className="text-white">
+                        {payosDetail.amountRemaining.toLocaleString('vi-VN')}đ
+                      </span>
+                    </>
+                  )}
+                </p>
+                {payosDetail.transferMemo && (
+                  <p>
+                    {language === 'vi' ? 'Nội dung CK (bắt buộc):' : 'Transfer memo:'}{' '}
+                    <span className="font-mono text-netflix-red">{payosDetail.transferMemo}</span>
+                  </p>
+                )}
+                <p className="text-xs">
+                  {language === 'vi'
+                    ? 'check-status PENDING = ngân hàng chưa báo tiền về PayOS. CK đúng TK trên trang pay.payos.vn của link hiện tại, không dùng link cũ.'
+                    : 'PENDING means PayOS has not matched your bank transfer yet.'}
+                </p>
+              </div>
+            )}
             <p className="text-gray-500 text-sm">
               {language === 'vi'
                 ? 'Nếu PayOS đã ghi nhận giao dịch, bấm thử lại.'

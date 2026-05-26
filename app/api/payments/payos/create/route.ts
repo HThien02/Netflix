@@ -80,11 +80,12 @@ export async function POST(request: Request) {
     }
 
     const savedPending = await savePayosPendingToDb(pendingPayload, payos.amountSent)
-    if (isSupabaseConfigured() && !savedPending) {
+    if (isSupabaseConfigured() && !savedPending.ok) {
+      const detail = [savedPending.error, savedPending.hint].filter(Boolean).join(' — ')
       throw new Error(
         language === 'vi'
-          ? 'Không lưu được đơn chờ PayOS. Chạy migration payos_pending_orders trên Supabase.'
-          : 'Could not save PayOS pending order. Run payos_pending_orders migration.',
+          ? `Không lưu được đơn chờ PayOS. ${detail}`
+          : `Could not save PayOS pending order. ${detail}`,
       )
     }
 

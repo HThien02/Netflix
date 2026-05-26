@@ -230,6 +230,12 @@ export type PayosPaymentInfo = {
   amount?: number
   amountPaid?: number
   amountRemaining?: number
+  description?: string
+  orderCode?: number
+  paymentLinkId?: string
+  bin?: string
+  accountNumber?: string
+  accountName?: string
 }
 
 export async function getPaymentByOrderCode(orderCode: number): Promise<PayosPaymentInfo | null> {
