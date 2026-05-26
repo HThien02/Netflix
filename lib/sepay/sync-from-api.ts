@@ -2,7 +2,11 @@ import {
   amountMatchesOrder,
   extractPaymentCodeFromWebhook,
 } from '@/lib/sepay/client'
-import { isSepayApiConfigured, listSepayIncomingTransactions } from '@/lib/sepay/api-client'
+import {
+  isSepayApiConfigured,
+  listSepayIncomingTransactions,
+  normalizeSepayTransactionStorageId,
+} from '@/lib/sepay/api-client'
 import { dateMinDaysAgo } from '@/lib/sepay/transaction-stats'
 import { completeSepayOrderFromPending } from '@/lib/sepay/complete-sepay-order'
 import {
@@ -50,9 +54,7 @@ export async function tryCompleteSepayFromApi(paymentCode: string): Promise<{
     const transferAmount = Math.round(Number(tx.amount_in ?? 0))
     if (!amountMatchesOrder(transferAmount, pending.amountVnd)) continue
 
-    const txId = Number(tx.id)
-    if (!Number.isFinite(txId) || txId <= 0) continue
-
+    const txId = normalizeSepayTransactionStorageId(tx.id)
     if (await isSepayWebhookProcessed(txId)) continue
 
     await completeSepayOrderFromPending(pending, txId)
