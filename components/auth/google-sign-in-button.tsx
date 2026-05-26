@@ -25,7 +25,9 @@ export function GoogleSignInButton({ language, nextPath = '/' }: Props) {
       const supabase = createClient()
       await supabase.auth.signOut()
 
-      const redirectTo = new URL('/auth/callback', window.location.origin)
+      const siteOrigin =
+        process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || window.location.origin
+      const redirectTo = new URL('/auth/callback', siteOrigin)
       const next =
         nextPath && nextPath.startsWith('/') && !nextPath.startsWith('//')
           ? nextPath

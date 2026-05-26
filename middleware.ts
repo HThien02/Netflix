@@ -41,6 +41,20 @@ function handlePaymentWebhook(request: NextRequest): NextResponse {
   return NextResponse.next()
 }
 
+/** Supabase OAuth đôi khi trả về Site URL (/) + ?code= — chuyển sang /auth/callback */
+function redirectOAuthCodeToCallback(request: NextRequest): NextResponse | null {
+  const path = normalizePath(request.nextUrl.pathname)
+  if (path === '/auth/callback') return null
+
+  const code = request.nextUrl.searchParams.get('code')
+  const oauthError = request.nextUrl.searchParams.get('error')
+  if (!code && !oauthError) return null
+
+  const url = request.nextUrl.clone()
+  url.pathname = '/auth/callback'
+  return NextResponse.redirect(url)
+}
+
 function applyAppSessionGuards(request: NextRequest): NextResponse | null {
   const path = normalizePath(request.nextUrl.pathname)
 
@@ -88,6 +102,11 @@ export async function middleware(request: NextRequest) {
 
   if (WEBHOOK_PATHS.has(path)) {
     return handlePaymentWebhook(request)
+  }
+
+  const oauthRedirect = redirectOAuthCodeToCallback(request)
+  if (oauthRedirect) {
+    return oauthRedirect
   }
 
   const guardResponse = applyAppSessionGuards(request)

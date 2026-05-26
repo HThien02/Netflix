@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next'
+import { Suspense } from 'react'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { OAuthCodeRedirect } from '@/components/auth/oauth-code-redirect'
 import { AppProvider } from '@/lib/context'
 import { DEFAULT_SITE_URL, SITE_DOMAIN, SITE_NAME } from '@/lib/site'
 import './globals.css'
@@ -52,6 +54,9 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased bg-background text-foreground">
         <AppProvider>
+          <Suspense fallback={null}>
+            <OAuthCodeRedirect />
+          </Suspense>
           {children}
         </AppProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
