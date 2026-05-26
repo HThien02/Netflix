@@ -12,7 +12,7 @@ import { getLocalizedProductName } from '@/lib/products-i18n'
 import { planLabel } from '@/lib/plans'
 import type { PlanType } from '@/lib/plans'
 import { savePayosPendingCheckout } from '@/lib/payos/pending-checkout'
-import { saveSepayPendingCheckout } from '@/lib/sepay/pending-checkout'
+import { saveSepayPendingCheckout, saveSepayPaymentDetails } from '@/lib/sepay/pending-checkout'
 import { completePurchase } from '@/lib/orders/complete-purchase'
 import { Invoice } from '@/lib/types'
 import { motion } from 'framer-motion'
@@ -77,8 +77,27 @@ export default function CheckoutPage() {
 
     try {
       if (paymentMethod === 'sepay') {
+        const sepayRes = await fetch('/api/payments/sepay/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({
+            cart,
+            userId: currentUser.id,
+            language,
+            productNames,
+          }),
+        })
+        const sepayData = await sepayRes.json()
+        if (!sepayRes.ok || !sepayData.paymentCode) {
+          throw new Error(sepayData.error || t('checkout.orderFailed', language))
+        }
         saveSepayPendingCheckout(cart, productNames)
-        window.location.href = '/checkout/sepay'
+        saveSepayPaymentDetails(sepayData.paymentCode, sepayData.amountVnd, {
+          qrImageUrl: sepayData.qrImageUrl,
+          bank: sepayData.bank,
+        })
+        window.location.href = `/checkout/sepay?code=${encodeURIComponent(sepayData.paymentCode)}`
         return
       }
 

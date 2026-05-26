@@ -11,6 +11,7 @@ import { setPayosPendingCookie } from '@/lib/payos/pending-cookie'
 import { savePayosPendingToDb } from '@/lib/payos/pending-store'
 import { isSupabaseConfigured } from '@/lib/auth/login'
 import { isDemoCheckoutAllowed } from '@/lib/payments/demo-checkout'
+import { getPayosManualTransferHint } from '@/lib/payos/transfer-fallback'
 import { getSiteUrl } from '@/lib/site'
 import type { Cart } from '@/lib/types'
 
@@ -97,11 +98,15 @@ export async function POST(request: Request) {
       )
     }
 
+    const manualTransfer = getPayosManualTransferHint(orderCode, payos.amountSent)
+
     const res = NextResponse.json({
       checkoutUrl: payos.checkoutUrl,
       orderCode,
       paymentLinkId: payos.paymentLinkId,
       amountVnd: payos.amountSent,
+      transferMemo: manualTransfer.transferMemo,
+      manualTransfer,
     })
 
     setPayosPendingCookie(res, pendingPayload)

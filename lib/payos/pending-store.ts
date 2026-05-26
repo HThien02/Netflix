@@ -50,14 +50,16 @@ export async function savePayosPendingToDb(
   return { ok: true }
 }
 
+export type PayosPendingWithAmount = PayosPendingPayload & { amountVnd: number }
+
 export async function loadPayosPendingFromDb(
   orderCode: number,
-): Promise<PayosPendingPayload | null> {
+): Promise<PayosPendingWithAmount | null> {
   if (!isSupabaseConfigured()) return null
   const supabase = createAdminClient()
   const { data, error } = await supabase
     .from('payos_pending_orders')
-    .select('order_code, user_id, cart, product_names, language, status')
+    .select('order_code, user_id, cart, product_names, language, amount_vnd, status')
     .eq('order_code', orderCode)
     .eq('status', 'pending')
     .maybeSingle()
@@ -69,6 +71,7 @@ export async function loadPayosPendingFromDb(
     cart: data.cart as PayosPendingPayload['cart'],
     productNames: (data.product_names || {}) as Record<string, string>,
     language: data.language === 'en' ? 'en' : 'vi',
+    amountVnd: data.amount_vnd,
   }
 }
 

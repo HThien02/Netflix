@@ -76,15 +76,44 @@ export async function loadSepayPendingDisplayFromDb(
   return loadSepayPendingFromDb(paymentCode)
 }
 
-export async function isSepayOrderAlreadyCompleted(paymentCode: string): Promise<boolean> {
-  if (!isSupabaseConfigured() || !hasSupabaseServiceRole()) return false
+export type SepayOrderStatus = {
+  status: string
+  sepayTransactionId: number | null
+}
+
+export async function getSepayOrderStatus(
+  paymentCode: string,
+): Promise<SepayOrderStatus | null> {
+  if (!isSupabaseConfigured() || !hasSupabaseServiceRole()) return null
   const supabase = createAdminClient()
   const { data } = await supabase
     .from('sepay_pending_orders')
-    .select('status')
+    .select('status, sepay_transaction_id')
     .eq('payment_code', paymentCode)
     .maybeSingle()
-  return data?.status === 'completed'
+  if (!data) return null
+  return {
+    status: data.status,
+    sepayTransactionId: data.sepay_transaction_id ?? null,
+  }
+}
+
+/** Chỉ true khi SePay webhook đã ghi nhận giao dịch (có transaction id) */
+export async function isSepayOrderAlreadyCompleted(paymentCode: string): Promise<boolean> {
+  const row = await getSepayOrderStatus(paymentCode)
+  return row?.status === 'completed' && row.sepayTransactionId != null
+}
+
+/** Sửa đơn completed giả (không có webhook SePay) để hiện lại QR */
+export async function reopenSepayPendingIfNoWebhook(paymentCode: string) {
+  const row = await getSepayOrderStatus(paymentCode)
+  if (!row || row.status !== 'completed' || row.sepayTransactionId != null) return
+  if (!isSupabaseConfigured() || !hasSupabaseServiceRole()) return
+  const supabase = createAdminClient()
+  await supabase
+    .from('sepay_pending_orders')
+    .update({ status: 'pending', sepay_transaction_id: null })
+    .eq('payment_code', paymentCode)
 }
 
 export async function markSepayPendingCompleted(

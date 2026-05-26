@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { tryCompletePayosFromBankWebhook } from '@/lib/payos/complete-from-bank-webhook'
 import {
   amountMatchesOrder,
   extractPaymentCodeFromWebhook,
@@ -69,7 +70,22 @@ export async function POST(request: Request) {
   }
 
   if (!paymentCode) {
-    console.info('[sepay webhook] no payment code in payload', { id: txId, code: payload.code })
+    const payosResult = await tryCompletePayosFromBankWebhook({
+      code: payload.code,
+      content: payload.content,
+      transferAmount: payload.transferAmount,
+    })
+    if (payosResult.handled && payosResult.completed) {
+      await markSepayWebhookProcessed(txId, `PAYOS-${payosResult.orderCode}`, Number(payload.transferAmount) || 0)
+      console.info('[sepay webhook] completed PayOS order via bank transfer', payosResult.orderCode)
+      return NextResponse.json({
+        success: true,
+        completed: true,
+        payosOrderCode: payosResult.orderCode,
+        via: 'sepay_bank_webhook',
+      })
+    }
+    console.info('[sepay webhook] no payment code in payload', { id: txId, code: payload.code, payosResult })
     return NextResponse.json({ success: true, skipped: true, reason: 'no_payment_code' })
   }
 
@@ -79,6 +95,20 @@ export async function POST(request: Request) {
 
   const pending = await loadSepayPendingFromDb(paymentCode)
   if (!pending) {
+    const payosResult = await tryCompletePayosFromBankWebhook({
+      code: payload.code,
+      content: payload.content,
+      transferAmount: payload.transferAmount,
+    })
+    if (payosResult.handled && payosResult.completed) {
+      await markSepayWebhookProcessed(txId, `PAYOS-${payosResult.orderCode}`, Number(payload.transferAmount) || 0)
+      return NextResponse.json({
+        success: true,
+        completed: true,
+        payosOrderCode: payosResult.orderCode,
+        via: 'sepay_bank_webhook',
+      })
+    }
     console.warn('[sepay webhook] no pending order', { paymentCode, txId })
     return NextResponse.json({
       success: true,

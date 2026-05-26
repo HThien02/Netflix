@@ -11,7 +11,6 @@ import { formatCurrency } from '@/lib/utils/format'
 import {
   clearSepayPendingCheckout,
   loadSepayPendingCheckout,
-  saveSepayPaymentDetails,
 } from '@/lib/sepay/pending-checkout'
 import { Copy, Loader2, CheckCircle2 } from 'lucide-react'
 import confetti from 'canvas-confetti'
@@ -39,92 +38,80 @@ export function SepayCheckoutClient() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [paid, setPaid] = useState(false)
+  const [alreadyPaid, setAlreadyPaid] = useState(false)
   const [copied, setCopied] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const initStarted = useRef(false)
 
-  const applyDisplay = useCallback((data: SepayDisplay) => {
-    setDisplay(data)
-    const stored = loadSepayPendingCheckout()
-    if (stored?.cart) {
-      saveSepayPaymentDetails(data.paymentCode, data.amountVnd, {
-        qrImageUrl: data.qrImageUrl,
-        bank: data.bank,
-      })
-    }
-  }, [])
-
-  const checkPaid = useCallback(async (code: string) => {
+  const checkPaid = useCallback(async (code: string): Promise<boolean> => {
     try {
       const res = await fetch(
         `/api/payments/sepay/verify?code=${encodeURIComponent(code)}`,
         { credentials: 'same-origin' },
       )
-      if (res.ok) {
-        setPaid(true)
-        clearSepayPendingCheckout()
-        setCart(null)
-        await refreshUserData()
-        confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } })
-        if (pollRef.current) clearInterval(pollRef.current)
-      }
+      const data = (await res.json()) as { paid?: boolean; sepayTransactionId?: number }
+      return res.ok && data.paid === true && data.sepayTransactionId != null
     } catch {
-      /* ignore */
+      return false
     }
+  }, [])
+
+  const handlePaid = useCallback(async () => {
+    setPaid(true)
+    clearSepayPendingCheckout()
+    setCart(null)
+    await refreshUserData()
+    confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } })
+    if (pollRef.current) clearInterval(pollRef.current)
   }, [refreshUserData, setCart])
 
   useEffect(() => {
-    if (!authReady || initStarted.current) return
+    if (!authReady) return
     if (!currentUser) {
       router.push('/auth/login')
       return
     }
-
-    initStarted.current = true
+    if (!codeParam) {
+      setError(t('checkout.sepaySessionLost', language))
+      setLoading(false)
+      return
+    }
 
     const init = async () => {
       try {
-        if (codeParam) {
-          const orderRes = await fetch(
-            `/api/payments/sepay/order?code=${encodeURIComponent(codeParam)}`,
-            { credentials: 'same-origin' },
-          )
-          const orderData = await orderRes.json()
-          if (orderRes.ok && orderData.paid) {
-            setPaid(true)
-            return
-          }
-          if (orderRes.ok && orderData.paymentCode) {
-            applyDisplay(orderData as SepayDisplay)
-            return
-          }
-          throw new Error(orderData.error || t('checkout.sepaySessionLost', language))
-        }
-
         const stored = loadSepayPendingCheckout()
-        if (!stored?.cart?.items?.length) {
-          setError(t('checkout.sepaySessionLost', language))
+        if (
+          stored?.paymentCode?.toUpperCase() === codeParam &&
+          stored.amountVnd &&
+          stored.qrImageUrl &&
+          stored.bank
+        ) {
+          setDisplay({
+            paymentCode: codeParam,
+            amountVnd: stored.amountVnd,
+            qrImageUrl: stored.qrImageUrl,
+            bank: stored.bank,
+          })
+          setLoading(false)
           return
         }
 
-        const createRes = await fetch('/api/payments/sepay/create', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'same-origin',
-          body: JSON.stringify({
-            cart: stored.cart,
-            userId: currentUser.id,
-            language,
-            productNames: stored.productNames,
-          }),
-        })
-        const createData = await createRes.json()
-        if (!createRes.ok) {
-          throw new Error(createData.error || 'SePay error')
+        const orderRes = await fetch(
+          `/api/payments/sepay/order?code=${encodeURIComponent(codeParam)}`,
+          { credentials: 'same-origin' },
+        )
+        const orderData = await orderRes.json()
+
+        if (orderRes.ok && orderData.paid === true && orderData.sepayTransactionId) {
+          setAlreadyPaid(true)
+          return
         }
 
-        applyDisplay(createData as SepayDisplay)
-        router.replace(`/checkout/sepay?code=${encodeURIComponent(createData.paymentCode)}`)
+        if (orderRes.ok && orderData.paymentCode) {
+          setDisplay(orderData as SepayDisplay)
+          return
+        }
+
+        throw new Error(orderData.error || t('checkout.sepaySessionLost', language))
       } catch (e) {
         setError(e instanceof Error ? e.message : t('checkout.orderFailed', language))
       } finally {
@@ -133,16 +120,9 @@ export function SepayCheckoutClient() {
     }
 
     void init()
-  }, [authReady, currentUser, codeParam, language, router, applyDisplay])
+  }, [authReady, currentUser, codeParam, language, router, handlePaid])
 
-  useEffect(() => {
-    if (!display?.paymentCode || paid || loading) return
-    void checkPaid(display.paymentCode)
-    pollRef.current = setInterval(() => void checkPaid(display.paymentCode), 5000)
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current)
-    }
-  }, [display?.paymentCode, paid, loading, checkPaid])
+  // Chỉ poll khi user bấm "Tôi đã chuyển" — không tự báo success
 
   const copyCode = async () => {
     if (!display?.paymentCode) return
@@ -151,12 +131,41 @@ export function SepayCheckoutClient() {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const onManualCheck = async () => {
+    if (!display?.paymentCode) return
+    const ok = await checkPaid(display.paymentCode)
+    if (ok) {
+      await handlePaid()
+      return
+    }
+    setError(
+      language === 'vi'
+        ? 'SePay chưa ghi nhận giao dịch. Kiểm tra đúng số tiền + nội dung CK, đợi 1–5 phút rồi thử lại.'
+        : 'SePay has not recorded the transfer yet. Check amount and memo, wait 1–5 minutes.',
+    )
+  }
+
   if (loading) {
     return (
       <AppLayout>
         <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3 text-gray-300">
           <Loader2 className="animate-spin text-netflix-red" size={40} />
           <p>{t('checkout.sepayLoading', language)}</p>
+        </div>
+      </AppLayout>
+    )
+  }
+
+  if (alreadyPaid) {
+    return (
+      <AppLayout>
+        <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4">
+          <CheckCircle2 size={72} className="text-green-500 mb-4" />
+          <h1 className="text-2xl font-bold text-white mb-2">{t('checkout.confirmed', language)}</h1>
+          <p className="text-gray-400 mb-6">{t('checkout.confirmedDesc', language)}</p>
+          <Link href="/my-accounts" className="btn-primary-red px-8 py-3 rounded-lg">
+            {t('checkout.viewAccounts', language)}
+          </Link>
         </div>
       </AppLayout>
     )
@@ -249,7 +258,7 @@ export function SepayCheckoutClient() {
             <p className="text-gray-500 text-xs">{t('checkout.sepayWaiting', language)}</p>
             <button
               type="button"
-              onClick={() => void checkPaid(display.paymentCode)}
+              onClick={() => void onManualCheck()}
               className="w-full btn-primary-red py-3 rounded-lg"
             >
               {t('checkout.sepayCheckPaid', language)}

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSessionFromRequest } from '@/lib/auth/session-cookie'
-import { isSepayOrderAlreadyCompleted } from '@/lib/sepay/pending-store'
+import { getSepayOrderStatus, isSepayOrderAlreadyCompleted } from '@/lib/sepay/pending-store'
 
 export async function GET(request: Request) {
   const session = getSessionFromRequest(request)
@@ -13,18 +13,26 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Missing code' }, { status: 400 })
   }
 
-  const completed = await isSepayOrderAlreadyCompleted(code)
-  if (completed) {
-    return NextResponse.json({ paid: true, paymentCode: code })
+  const row = await getSepayOrderStatus(code)
+  const paid = await isSepayOrderAlreadyCompleted(code)
+
+  if (paid && row?.sepayTransactionId) {
+    return NextResponse.json({
+      paid: true,
+      paymentCode: code,
+      sepayTransactionId: row.sepayTransactionId,
+    })
   }
 
   return NextResponse.json(
     {
       paid: false,
       paymentCode: code,
-      status: 'PENDING',
+      status: row?.status === 'completed' ? 'COMPLETED_NO_WEBHOOK' : 'PENDING',
       hintVi:
-        'Chưa nhận được CK hoặc SePay chưa gửi webhook. Kiểm tra đúng số tiền và nội dung CK, đợi 1–5 phút.',
+        row?.status === 'completed'
+          ? 'Đơn đánh dấu hoàn tất nhưng chưa có mã giao dịch SePay — chưa CK thật. Chuyển khoản đúng mã và số tiền.'
+          : 'Chưa nhận được CK hoặc SePay chưa gửi webhook. Kiểm tra đúng số tiền và nội dung CK, đợi 1–5 phút.',
     },
     { status: 402 },
   )

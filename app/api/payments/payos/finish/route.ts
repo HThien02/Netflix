@@ -12,6 +12,7 @@ import {
   readPayosPendingCookie,
 } from '@/lib/payos/pending-cookie'
 import { completePayosOrderFromPending } from '@/lib/payos/complete-payos-order'
+import { getPayosManualTransferHint } from '@/lib/payos/transfer-fallback'
 import { isPayosOrderAlreadyCompleted, loadPayosPendingFromDb } from '@/lib/payos/pending-store'
 import { isSupabaseConfigured } from '@/lib/auth/login'
 import { completeOrderServer } from '@/lib/orders/complete-order'
@@ -108,21 +109,23 @@ export async function POST(request: Request) {
     if (!paid) {
       const remaining = Number(data?.amountRemaining ?? data?.amount ?? 0)
       const memo = formatPayosDescription(orderCode)
+      const manualTransfer = getPayosManualTransferHint(orderCode, remaining || pending.cart.total)
       return NextResponse.json(
         {
           error:
             language === 'vi'
               ? remaining > 0
-                ? `PayOS chưa nhận tiền (còn ${remaining.toLocaleString('vi-VN')}đ). Nội dung CK: "${memo}". Đợi 1–5 phút rồi bấm Thử lại.`
-                : 'PayOS chưa xác nhận thanh toán. Thử lại sau 1 phút.'
+                ? `PayOS chưa đối soát (còn ${remaining.toLocaleString('vi-VN')}đ). Nếu đã CK vào TK ngân hàng: nội dung "${memo}" — SePay sẽ hoàn tất đơn, đợi 1–5 phút rồi Thử lại.`
+                : 'PayOS chưa xác nhận. Nếu đã chuyển khoản với đúng nội dung, đợi 1–5 phút rồi Thử lại.'
               : remaining > 0
-                ? `PayOS: ${remaining} VND remaining. Transfer memo must be exactly "${memo}". Retry in 1–5 minutes.`
+                ? `PayOS pending (${remaining} VND). If you transferred manually, memo "${memo}" — wait 1–5 min and retry.`
                 : 'PayOS has not confirmed payment yet. Retry in a minute.',
           payosStatus: data?.status,
           amountPaid: data?.amountPaid ?? 0,
           amountRemaining: remaining,
           transferMemo: memo,
           orderCode,
+          manualTransfer,
         },
         { status: 402 },
       )

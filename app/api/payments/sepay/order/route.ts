@@ -5,7 +5,12 @@ import {
   getSepayBankDisplay,
   isSepayConfigured,
 } from '@/lib/sepay/client'
-import { isSepayOrderAlreadyCompleted, loadSepayPendingFromDb } from '@/lib/sepay/pending-store'
+import {
+  getSepayOrderStatus,
+  isSepayOrderAlreadyCompleted,
+  loadSepayPendingFromDb,
+  reopenSepayPendingIfNoWebhook,
+} from '@/lib/sepay/pending-store'
 
 /** Lấy thông tin QR/CK theo mã — dùng khi reload trang SePay */
 export async function GET(request: Request) {
@@ -23,12 +28,18 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'SePay not configured' }, { status: 503 })
   }
 
+  if (await isSepayOrderAlreadyCompleted(code)) {
+    const row = await getSepayOrderStatus(code)
+    return NextResponse.json({
+      paid: true,
+      paymentCode: code,
+      sepayTransactionId: row?.sepayTransactionId,
+    })
+  }
+
+  await reopenSepayPendingIfNoWebhook(code)
   const pending = await loadSepayPendingFromDb(code)
   if (!pending) {
-    const completed = await isSepayOrderAlreadyCompleted(code)
-    if (completed) {
-      return NextResponse.json({ paid: true, paymentCode: code })
-    }
     return NextResponse.json(
       {
         error:

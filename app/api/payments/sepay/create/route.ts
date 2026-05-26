@@ -8,7 +8,7 @@ import {
   SEPAY_MIN_AMOUNT_VND,
 } from '@/lib/sepay/client'
 import { setSepayPendingCookie } from '@/lib/sepay/pending-cookie'
-import { saveSepayPendingToDb } from '@/lib/sepay/pending-store'
+import { reopenSepayPendingIfNoWebhook, saveSepayPendingToDb } from '@/lib/sepay/pending-store'
 import { isSupabaseConfigured } from '@/lib/auth/login'
 import { isDemoCheckoutAllowed } from '@/lib/payments/demo-checkout'
 import type { Cart } from '@/lib/types'
@@ -51,6 +51,7 @@ export async function POST(request: Request) {
     }
 
     const paymentCode = generateSepayPaymentCode()
+    await reopenSepayPendingIfNoWebhook(paymentCode)
     const bank = getSepayBankDisplay()
     const qrImageUrl = buildVietQrImageUrl(amountVnd, paymentCode)
     const lang = language === 'en' ? 'en' : 'vi'

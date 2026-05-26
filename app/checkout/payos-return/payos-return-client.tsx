@@ -188,8 +188,8 @@ export function PayosReturnClient() {
                 )}
                 <p className="text-xs">
                   {language === 'vi'
-                    ? 'check-status PENDING = ngân hàng chưa báo tiền về PayOS. CK đúng TK trên trang pay.payos.vn của link hiện tại, không dùng link cũ.'
-                    : 'PENDING means PayOS has not matched your bank transfer yet.'}
+                    ? 'QR PayOS có thể chuyển thẳng vào TK ngân hàng (PayOS không đối soát). Nếu đã CK: ghi đúng nội dung bên trên — app dùng SePay để xác nhận đơn, đợi 1–5 phút rồi Thử lại.'
+                    : 'PayOS QR may pay your bank directly. If transferred, use the memo above — SePay confirms the order; retry in 1–5 minutes.'}
                 </p>
               </div>
             )}
