@@ -82,10 +82,17 @@ export async function POST(request: Request) {
     const savedPending = await savePayosPendingToDb(pendingPayload, payos.amountSent)
     if (isSupabaseConfigured() && !savedPending.ok) {
       const detail = [savedPending.error, savedPending.hint].filter(Boolean).join(' — ')
+      const onVercel = Boolean(process.env.VERCEL)
+      const envNote =
+        savedPending.error === 'Missing SUPABASE_SERVICE_ROLE_KEY' && onVercel
+          ? language === 'vi'
+            ? ' (Vercel: kiểm tra biến trong môi trường Production + Redeploy; .env.local chỉ chạy local.)'
+            : ' (Vercel: set variable on Production + Redeploy; .env.local is local only.)'
+          : ''
       throw new Error(
         language === 'vi'
-          ? `Không lưu được đơn chờ PayOS. ${detail}`
-          : `Could not save PayOS pending order. ${detail}`,
+          ? `Không lưu được đơn chờ PayOS. ${detail}${envNote}`
+          : `Could not save PayOS pending order. ${detail}${envNote}`,
       )
     }
 
