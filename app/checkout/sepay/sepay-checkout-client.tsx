@@ -143,11 +143,7 @@ export function SepayCheckoutClient() {
       return
     }
     setConfirming(false)
-    setPaymentHint(
-      language === 'vi'
-        ? 'SePay chưa ghi nhận giao dịch. Kiểm tra đúng số tiền + nội dung CK, đợi 1–5 phút — trang sẽ tự cập nhật.'
-        : 'SePay has not recorded the transfer yet. Check amount and memo — this page will update automatically.',
-    )
+    setPaymentHint(t('checkout.sepayNotPaidYet', language))
   }
 
   if (loading) {
@@ -246,16 +242,15 @@ export function SepayCheckoutClient() {
             </div>
 
             <div className="bg-netflix-red/10 border border-netflix-red/40 rounded-xl p-4">
-              <p className="text-gray-400 text-xs mb-1">{t('checkout.sepayTransferMemo', language)}</p>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-mono font-bold text-netflix-red break-all">
+              <p className="text-gray-400 text-xs mb-2">{t('checkout.sepayTransferMemo', language)}</p>
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-base font-mono font-bold text-netflix-red break-all leading-snug">
                   {display.transferDescription}
-                </span>
-                <p className="text-gray-500 text-xs mt-1 font-mono">{display.paymentCode}</p>
+                </p>
                 <button
                   type="button"
                   onClick={() => void copyCode()}
-                  className="flex items-center gap-1 text-sm text-gray-300 hover:text-white"
+                  className="flex shrink-0 items-center gap-1 text-sm text-gray-300 hover:text-white"
                 >
                   <Copy size={16} />
                   {copied ? t('checkout.sepayCopied', language) : t('checkout.sepayCopy', language)}

@@ -1,4 +1,4 @@
-/** Webhook SePay gửi id số; API v2 sandbox dùng UUID — chuẩn hóa để lưu BIGINT */
+/** Webhook SePay gửi id số; API v2 có thể UUID — chuẩn hóa để lưu BIGINT */
 export function normalizeSepayTransactionStorageId(raw: string | number): number {
   const n = Number(raw)
   if (Number.isSafeInteger(n) && n > 0) return n

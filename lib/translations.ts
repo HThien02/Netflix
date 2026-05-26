@@ -360,6 +360,8 @@ export const translations = {
     'checkout.sepayCopied': 'Copied',
     'checkout.sepayWaiting': 'After you transfer, wait 1–5 minutes for SePay webhook, then tap Check status.',
     'checkout.sepayCheckPaid': 'Check payment status now',
+    'checkout.sepayNotPaidYet':
+      'Payment not confirmed yet. Check amount and transfer memo, wait 1–5 minutes, then tap Check again.',
     'sepayStats.title': 'SePay payments',
     'sepayStats.loading': 'Loading payment stats…',
     'sepayStats.totalPaid': 'Total paid (SePay)',
@@ -753,6 +755,8 @@ export const translations = {
     'checkout.sepayCopied': 'Đã sao chép',
     'checkout.sepayWaiting': 'Sau khi chuyển khoản, đợi webhook SePay 1–5 phút rồi bấm Kiểm tra trạng thái.',
     'checkout.sepayCheckPaid': 'Kiểm tra trạng thái ngay',
+    'checkout.sepayNotPaidYet':
+      'Chưa xác nhận thanh toán. Kiểm tra đúng số tiền và nội dung CK, đợi 1–5 phút rồi bấm Kiểm tra lại.',
     'sepayStats.title': 'Thanh toán SePay',
     'sepayStats.loading': 'Đang tải thống kê…',
     'sepayStats.totalPaid': 'Đã thanh toán (SePay)',

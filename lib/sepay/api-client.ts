@@ -1,7 +1,9 @@
-/** SePay API — v2 khuyến nghị; v1 fallback production */
+/** SePay API production — https://userapi.sepay.vn/v2 */
 
 import { normalizeSepayTransactionStorageId } from '@/lib/sepay/transaction-id'
 import { dateMinDaysAgo } from '@/lib/sepay/transaction-stats'
+
+const SEPAY_API_V2 = 'https://userapi.sepay.vn/v2'
 
 export type SepayApiTransaction = {
   id: string
@@ -15,25 +17,8 @@ export type SepayApiTransaction = {
   reference_number?: string
 }
 
-type SepayApiMode = 'production' | 'sandbox'
-
-function getSepayApiMode(): SepayApiMode {
-  const mode = (process.env.SEPAY_API_MODE || 'production').trim().toLowerCase()
-  return mode === 'sandbox' ? 'sandbox' : 'production'
-}
-
-function getSepayApiV2Base(): string {
-  return getSepayApiMode() === 'sandbox'
-    ? 'https://userapi-sandbox.sepay.vn/v2'
-    : 'https://userapi.sepay.vn/v2'
-}
-
 export function isSepayApiConfigured(): boolean {
   return Boolean(process.env.SEPAY_API_TOKEN?.trim())
-}
-
-export function getSepayApiModeLabel(): SepayApiMode {
-  return getSepayApiMode()
 }
 
 function mapV2Row(row: Record<string, unknown>): SepayApiTransaction {
@@ -66,8 +51,7 @@ async function listSepayTransactionsV2(options: {
   const account = options.accountNumber || process.env.SEPAY_BANK_ACCOUNT_NUMBER?.trim()
   if (account) params.set('account_number', account)
   if (options.transactionDateMin) {
-    const day = options.transactionDateMin.slice(0, 10)
-    params.set('transaction_date_from', day)
+    params.set('transaction_date_from', options.transactionDateMin.slice(0, 10))
   }
   if (options.searchQuery) {
     params.set('q', options.searchQuery)
@@ -76,79 +60,29 @@ async function listSepayTransactionsV2(options: {
     params.set('amount_in_max', String(Math.round(options.amountIn)))
   }
 
-  const url = `${getSepayApiV2Base()}/transactions?${params.toString()}`
-  const res = await fetch(url, {
+  const res = await fetch(`${SEPAY_API_V2}/transactions?${params.toString()}`, {
     headers: { Authorization: `Bearer ${token}` },
     cache: 'no-store',
   })
 
-  if (!res.ok) {
-    const body = await res.text().catch(() => '')
-    console.warn('[sepay api v2] list failed', getSepayApiMode(), res.status, body.slice(0, 200))
-    return []
-  }
+  if (!res.ok) return []
 
   const body = (await res.json()) as { status?: string; data?: Record<string, unknown>[] }
   if (body.status !== 'success' || !Array.isArray(body.data)) return []
   return body.data.map(mapV2Row)
 }
 
-/** v1 production only — khi v2 lỗi */
-async function listSepayTransactionsV1(options: {
-  accountNumber?: string
-  limit?: number
-  transactionDateMin?: string
-  amountIn?: number
-}): Promise<SepayApiTransaction[]> {
-  const token = process.env.SEPAY_API_TOKEN?.trim()
-  if (!token) return []
-
-  const params = new URLSearchParams({
-    limit: String(Math.min(options.limit ?? 100, 500)),
-  })
-  const account = options.accountNumber || process.env.SEPAY_BANK_ACCOUNT_NUMBER?.trim()
-  if (account) params.set('account_number', account)
-  if (options.transactionDateMin) params.set('transaction_date_min', options.transactionDateMin)
-  if (options.amountIn != null && options.amountIn > 0) {
-    params.set('amount_in', String(Math.round(options.amountIn)))
-  }
-
-  const url = `https://my.sepay.vn/userapi/transactions/list?${params.toString()}`
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: 'no-store',
-  })
-
-  if (!res.ok) {
-    console.warn('[sepay api v1] list failed', res.status)
-    return []
-  }
-
-  const body = (await res.json()) as {
-    transactions?: SepayApiTransaction[]
-    error?: string | null
-  }
-  if (body.error) return []
-  return body.transactions ?? []
-}
-
 export async function listSepayTransactions(options: {
   accountNumber?: string
   limit?: number
   transactionDateMin?: string
-  transactionDateMax?: string
   amountIn?: number
   searchQuery?: string
 }): Promise<SepayApiTransaction[]> {
   if (!isSepayApiConfigured()) return []
-
-  const v2 = await listSepayTransactionsV2(options)
-  if (v2.length > 0 || getSepayApiMode() === 'sandbox' || options.searchQuery) return v2
-
-  return listSepayTransactionsV1(options)
+  return listSepayTransactionsV2(options)
 }
 
-/** Tìm GD theo mã CK — không lọc amount trên API (tránh lệch 1đ) */
 export async function findSepayTransactionsByPaymentCode(
   paymentCode: string,
   accountNumber?: string,
