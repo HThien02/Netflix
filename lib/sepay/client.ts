@@ -70,7 +70,7 @@ function findPaymentCodeInText(text: string): string | null {
   const idx = upper.indexOf(prefix)
   if (idx < 0) return null
   const tail = upper.slice(idx)
-  const match = tail.match(new RegExp(`^${prefix}[A-Z0-9]{4,16}`))
+  const match = tail.match(new RegExp(`^${prefix}[A-Z0-9]{4,16}(?![A-Z0-9])`))
   return match ? match[0] : null
 }
 

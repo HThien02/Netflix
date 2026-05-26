@@ -1,0 +1,14 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/payments/sepay/webhook",
+      "has": [{ "type": "host", "value": "netflixhub.com.vn" }],
+      "destination": "https://www.netflixhub.com.vn/api/payments/sepay/webhook"
+    },
+    {
+      "source": "/api/payments/payos/webhook",
+      "has": [{ "type": "host", "value": "netflixhub.com.vn" }],
+      "destination": "https://www.netflixhub.com.vn/api/payments/payos/webhook"
+    }
+  ]
+}
