@@ -3,10 +3,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { User, Cart, Subscription, Invoice, PurchasedAccount } from './types'
 import { loadUserData } from './user-data'
-import {
-  loadInvoicesLocal,
-  loadPurchasedAccountsLocal,
-} from './orders/complete-purchase'
 
 interface AppContextType {
   currentUser: User | null
@@ -16,6 +12,8 @@ interface AppContextType {
   isAuthenticated: boolean
   setIsAuthenticated: (authenticated: boolean) => void
   authReady: boolean
+  /** Đã load subscriptions/invoices/accounts từ DB (tránh flash dữ liệu local cũ) */
+  userDataReady: boolean
   language: 'vi' | 'en'
   setLanguage: (lang: 'vi' | 'en') => void
   userSubscriptions: Subscription[]
@@ -55,6 +53,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [authReady, setAuthReady] = useState(false)
+  const [userDataReady, setUserDataReady] = useState(false)
   const [language, setLanguage] = useState<'vi' | 'en'>('vi')
   const [cart, setCart] = useState<Cart | null>(null)
   const [userSubscriptions, setUserSubscriptions] = useState<Subscription[]>([])
@@ -65,12 +64,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCurrentUser(user)
     setIsAuthenticated(true)
     setLanguage(user.language === 'en' ? 'en' : 'vi')
-    setUserInvoices(loadInvoicesLocal(user.id))
-    setPurchasedAccounts(loadPurchasedAccountsLocal(user.id))
+    setUserDataReady(false)
+    setUserSubscriptions([])
+    setUserInvoices([])
+    setPurchasedAccounts([])
     const data = await loadUserData(user.id)
     setUserSubscriptions(data.subscriptions)
     setUserInvoices(data.invoices)
     setPurchasedAccounts(data.purchasedAccounts)
+    setUserDataReady(true)
   }, [])
 
   const clearAuth = useCallback(() => {
@@ -79,16 +81,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setUserSubscriptions([])
     setUserInvoices([])
     setPurchasedAccounts([])
+    setUserDataReady(false)
     localStorage.removeItem('currentUser')
     localStorage.removeItem('isAuthenticated')
   }, [])
 
   const refreshUserData = async () => {
     if (!currentUser?.id) return
+    setUserDataReady(false)
     const data = await loadUserData(currentUser.id)
     setUserSubscriptions(data.subscriptions)
     setUserInvoices(data.invoices)
     setPurchasedAccounts(data.purchasedAccounts)
+    setUserDataReady(true)
   }
 
   const logout = useCallback(async () => {
@@ -174,6 +179,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated,
         setIsAuthenticated,
         authReady,
+        userDataReady,
         language,
         setLanguage,
         userSubscriptions,

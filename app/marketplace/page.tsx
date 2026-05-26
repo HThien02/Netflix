@@ -13,13 +13,13 @@ import {
   getMerchantStoreName,
 } from '@/lib/merchants/display'
 import { motion } from 'framer-motion'
-import { Search, Grid3x3, List, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, Grid3x3, List, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 
 const PAGE_SIZE = 12
 
 export default function MarketplacePage() {
   const { language } = useApp()
-  const { products } = useProducts()
+  const { products, loading: productsLoading } = useProducts()
   const [searchQuery, setSearchQuery] = useState('')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [selectedMerchant, setSelectedMerchant] = useState<string>('all')
@@ -145,7 +145,11 @@ export default function MarketplacePage() {
 
       <section className="py-12 bg-netflix-black">
         <div className="container mx-auto px-4">
-          {filteredProducts.length > 0 ? (
+          {productsLoading ? (
+            <div className="flex justify-center py-20 text-gray-400">
+              <Loader2 className="animate-spin text-netflix-red" size={40} />
+            </div>
+          ) : filteredProducts.length > 0 ? (
             <>
               <div
                 className={

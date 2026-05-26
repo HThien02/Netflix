@@ -5,9 +5,10 @@ import Link from 'next/link'
 import { AppLayout } from '@/components/app-layout'
 import { useApp } from '@/lib/context'
 import { t } from '@/lib/translations'
-import { mockProducts, mockSubscriptions } from '@/lib/mock-data'
+import { UserDataGate } from '@/components/user-data-gate'
 import { Subscription } from '@/lib/types'
 import { formatDate, formatCurrency } from '@/lib/utils/format'
+import { planLabel } from '@/lib/plans'
 import { motion } from 'framer-motion'
 import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, RotateCcw } from 'lucide-react'
 
@@ -79,6 +80,7 @@ export default function SubscriptionsPage() {
 
   return (
     <AppLayout>
+      <UserDataGate>
       <section className="bg-netflix-black min-h-screen py-12">
         <div className="container mx-auto px-4">
           {/* Header */}
@@ -141,8 +143,7 @@ export default function SubscriptionsPage() {
           {filteredSubs.length > 0 ? (
             <div className="space-y-4">
               {filteredSubs.map((subscription, index) => {
-                const product = mockProducts.find(p => p.id === subscription.productId)
-                if (!product) return null
+                const title = subscription.productName || subscription.productId
 
                 return (
                   <motion.div
@@ -153,19 +154,12 @@ export default function SubscriptionsPage() {
                     className="glass-dark rounded-2xl p-6 border border-white/10 hover:border-netflix-red/50 transition-all"
                   >
                     <div className="grid grid-cols-1 md:grid-cols-5 gap-6 items-center">
-                      {/* Product Image */}
-                      <div className="w-32 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-netflix-dark hidden md:block">
-                        <img
-                          src={product.image}
-                          alt={product.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-
                       {/* Product Info */}
-                      <div>
-                        <h3 className="text-white font-bold text-lg mb-1">{product.name}</h3>
-                        <p className="text-gray-400 text-sm">{product.description}</p>
+                      <div className="md:col-span-2">
+                        <h3 className="text-white font-bold text-lg mb-1">{title}</h3>
+                        <p className="text-gray-400 text-sm capitalize">
+                          {planLabel(subscription.planType, language)}
+                        </p>
                       </div>
 
                       {/* Subscription Details */}
@@ -253,6 +247,7 @@ export default function SubscriptionsPage() {
           )}
         </div>
       </section>
+      </UserDataGate>
     </AppLayout>
   )
 }

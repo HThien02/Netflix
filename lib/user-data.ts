@@ -102,6 +102,9 @@ function mapPurchasedAccounts(rows: Record<string, unknown>[]): PurchasedAccount
       extraNotes: row.extra_notes ? String(row.extra_notes) : undefined,
       expiresAt,
       status,
+      userRating: row.user_rating != null ? Number(row.user_rating) : undefined,
+      userReview: row.user_review ? String(row.user_review) : undefined,
+      ratedAt: row.rated_at ? new Date(String(row.rated_at)) : undefined,
       createdAt: new Date(String(row.created_at)),
     }
   })

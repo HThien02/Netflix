@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { AppLayout } from '@/components/app-layout'
+import { UserDataGate } from '@/components/user-data-gate'
 import { useApp } from '@/lib/context'
 import { t } from '@/lib/translations'
 import {
@@ -224,6 +225,7 @@ export default function MyAccountsPage() {
 
   return (
     <AppLayout>
+      <UserDataGate>
       <section className="bg-netflix-black min-h-screen py-12">
         <div className="container mx-auto px-4 max-w-4xl">
           <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
@@ -341,6 +343,7 @@ export default function MyAccountsPage() {
           )}
         </div>
       </section>
+      </UserDataGate>
     </AppLayout>
   )
 }

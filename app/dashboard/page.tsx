@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { AppLayout } from '@/components/app-layout'
 import { useApp } from '@/lib/context'
 import { t } from '@/lib/translations'
-import { mockProducts, mockInvoices } from '@/lib/mock-data'
+import { UserDataGate } from '@/components/user-data-gate'
 import { formatDate, formatCurrency } from '@/lib/utils/format'
 import { invoiceStatusLabel } from '@/lib/invoices/display'
 import { motion } from 'framer-motion'
@@ -84,6 +84,7 @@ export default function DashboardPage() {
 
   return (
     <AppLayout>
+      <UserDataGate>
       <section className="bg-netflix-black min-h-screen py-12">
         <div className="container mx-auto px-4">
           {/* Header */}
@@ -287,6 +288,7 @@ export default function DashboardPage() {
           </div>
         </div>
       </section>
+      </UserDataGate>
     </AppLayout>
   )
 }

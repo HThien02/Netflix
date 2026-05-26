@@ -1,11 +1,10 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { mockProducts } from '@/lib/mock-data'
 import type { Product } from '@/lib/types'
 
 export function useProducts() {
-  const [products, setProducts] = useState<Product[]>(mockProducts.filter((p) => p.active))
+  const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
 
   const reload = useCallback(() => {

@@ -12,6 +12,8 @@ type DbTicket = {
   priority: string
   category: string | null
   attachments: SupportAttachmentMeta[] | null
+  admin_response?: string | null
+  admin_responded_at?: string | null
   created_at: string
   updated_at: string
 }
@@ -25,10 +27,58 @@ export function mapDbTicket(row: DbTicket): SupportTicket {
     priority: row.priority as SupportTicket['priority'],
     status: row.status as SupportTicket['status'],
     attachments: Array.isArray(row.attachments) ? row.attachments : [],
+    adminResponse: row.admin_response?.trim() || undefined,
+    adminRespondedAt: row.admin_responded_at ? new Date(row.admin_responded_at) : undefined,
     messages: [],
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
   }
+}
+
+export type PurchasedAccountReviewRow = {
+  id: string
+  product_name: string
+  plan_type: string
+  expires_at: string
+  status: string
+  user_rating: number | null
+  user_review: string | null
+  rated_at: string | null
+  created_at: string
+}
+
+export function mapPurchasedAccountReview(row: PurchasedAccountReviewRow) {
+  return {
+    id: row.id,
+    productName: row.product_name,
+    planType: row.plan_type,
+    expiresAt: row.expires_at,
+    status: row.status,
+    userRating: row.user_rating ?? undefined,
+    userReview: row.user_review ?? undefined,
+    ratedAt: row.rated_at ?? undefined,
+    createdAt: row.created_at,
+  }
+}
+
+export async function listPurchasedAccountsForReview(userId: string) {
+  if (!isSupabaseConfigured()) return []
+
+  const supabase = createAdminClient()
+  const { data, error } = await supabase
+    .from('purchased_accounts')
+    .select(
+      'id, product_name, plan_type, expires_at, status, user_rating, user_review, rated_at, created_at',
+    )
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('[support] list purchased accounts failed', error.message)
+    return []
+  }
+
+  return (data as PurchasedAccountReviewRow[]).map(mapPurchasedAccountReview)
 }
 
 export async function listUserSupportTickets(userId: string): Promise<SupportTicket[]> {

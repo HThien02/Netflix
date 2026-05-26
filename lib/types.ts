@@ -101,6 +101,9 @@ export interface PurchasedAccount {
   slotAssignments?: Array<{ slot_number: number; profile_name: string; pin?: string }>
   expiresAt: Date
   status: 'active' | 'expired' | 'revoked'
+  userRating?: number
+  userReview?: string
+  ratedAt?: Date
   createdAt: Date
 }
 
@@ -159,6 +162,8 @@ export interface SupportTicket {
   priority: 'low' | 'medium' | 'high' | 'urgent'
   status: 'open' | 'in_progress' | 'resolved' | 'closed'
   attachments?: SupportTicketAttachment[]
+  adminResponse?: string
+  adminRespondedAt?: Date
   messages: TicketMessage[]
   createdAt: Date
   updatedAt: Date
