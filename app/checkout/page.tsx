@@ -188,7 +188,7 @@ export default function CheckoutPage() {
           </motion.div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <form onSubmit={handlePlaceOrder} className="lg:col-span-2 space-y-6">
+            <form id="checkout-form" onSubmit={handlePlaceOrder} className="lg:col-span-2 space-y-6">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -335,6 +335,7 @@ export default function CheckoutPage() {
               {orderError && <p className="text-red-400 text-sm mb-3">{orderError}</p>}
               <button
                 type="submit"
+                form="checkout-form"
                 disabled={loading}
                 className="w-full btn-primary-red py-3 disabled:opacity-50"
               >
