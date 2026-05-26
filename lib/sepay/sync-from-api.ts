@@ -3,11 +3,10 @@ import {
   extractPaymentCodeFromWebhook,
 } from '@/lib/sepay/client'
 import {
+  findSepayTransactionsByPaymentCode,
   isSepayApiConfigured,
-  listSepayIncomingTransactions,
   normalizeSepayTransactionStorageId,
 } from '@/lib/sepay/api-client'
-import { dateMinDaysAgo } from '@/lib/sepay/transaction-stats'
 import { completeSepayOrderFromPending } from '@/lib/sepay/complete-sepay-order'
 import {
   isSepayOrderAlreadyCompleted,
@@ -36,12 +35,7 @@ export async function tryCompleteSepayFromApi(paymentCode: string): Promise<{
   const accountNumber = process.env.SEPAY_BANK_ACCOUNT_NUMBER?.trim()
   if (!accountNumber) return { completed: false }
 
-  const transactions = await listSepayIncomingTransactions({
-    accountNumber,
-    amountInVnd: pending.amountVnd,
-    limit: 50,
-    transactionDateMin: dateMinDaysAgo(1),
-  })
+  const transactions = await findSepayTransactionsByPaymentCode(paymentCode, accountNumber)
 
   for (const tx of transactions) {
     const extracted = extractPaymentCodeFromWebhook({

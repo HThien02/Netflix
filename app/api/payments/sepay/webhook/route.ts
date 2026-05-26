@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server'
 import { tryCompletePayosFromBankWebhook } from '@/lib/payos/complete-from-bank-webhook'
-import { extractPayosOrderCodeFromTransfer } from '@/lib/payos/reconcile-transfer'
 import {
   amountMatchesOrder,
   extractPaymentCodeFromWebhook,
-  getSepayPaymentPrefix,
 } from '@/lib/sepay/client'
 import { completeSepayOrderFromPending } from '@/lib/sepay/complete-sepay-order'
 import { verifySepayWebhookRequest } from '@/lib/sepay/signature'
+import { sepayWebhookOk } from '@/lib/sepay/webhook-response'
 import {
   isSepayOrderAlreadyCompleted,
   isSepayWebhookProcessed,
@@ -31,7 +30,8 @@ export async function GET() {
   return NextResponse.json({
     ok: true,
     service: 'sepay-webhook',
-    message: 'POST JSON webhook from SePay dashboard',
+    correctUrl: 'https://www.netflixhub.com.vn/api/payments/sepay/webhook',
+    message: 'POST JSON only — không dùng URL PayOS webhook',
   })
 }
 
@@ -51,13 +51,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, message: 'Invalid JSON' }, { status: 400 })
   }
 
-  if (payload.transferType && payload.transferType !== 'in') {
-    return NextResponse.json({ success: true, skipped: true, reason: 'not_incoming' })
-  }
-
   const txId = Number(payload.id)
   if (!txId) {
     return NextResponse.json({ success: false, message: 'Missing transaction id' }, { status: 400 })
+  }
+
+  if (payload.transferType && payload.transferType !== 'in') {
+    console.info('[sepay webhook] skipped not_incoming', txId)
+    return sepayWebhookOk()
   }
 
   const paymentCode = extractPaymentCodeFromWebhook({
@@ -67,12 +68,8 @@ export async function POST(request: Request) {
   })
 
   if (await isSepayWebhookProcessed(txId)) {
-    if (paymentCode && (await isSepayOrderAlreadyCompleted(paymentCode))) {
-      return NextResponse.json({ success: true, duplicate: true, transactionId: txId })
-    }
-    if (!paymentCode) {
-      return NextResponse.json({ success: true, duplicate: true, transactionId: txId })
-    }
+    console.info('[sepay webhook] duplicate tx', txId, paymentCode)
+    return sepayWebhookOk()
   }
 
   if (!paymentCode) {
@@ -83,45 +80,21 @@ export async function POST(request: Request) {
     })
     if (payosResult.handled && payosResult.completed) {
       await markSepayWebhookProcessed(txId, `PAYOS-${payosResult.orderCode}`, Number(payload.transferAmount) || 0)
-      console.info('[sepay webhook] completed PayOS order via bank transfer', payosResult.orderCode)
-      return NextResponse.json({
-        success: true,
-        completed: true,
-        payosOrderCode: payosResult.orderCode,
-        via: 'sepay_bank_webhook',
-      })
+      console.info('[sepay webhook] payos via bank', payosResult.orderCode, txId)
+      return sepayWebhookOk()
     }
-    const payosOrderCode = extractPayosOrderCodeFromTransfer({
-      code: payload.code,
-      content: payload.content,
-    })
-    const prefix = getSepayPaymentPrefix()
-    console.info('[sepay webhook] no payment code in payload', {
+    console.info('[sepay webhook] no payment code', {
       id: txId,
       code: payload.code,
-      content: payload.content?.slice(0, 80),
-      payosOrderCode,
-      payosResult,
+      content: payload.content?.slice(0, 120),
     })
-    return NextResponse.json({
-      success: true,
-      skipped: true,
-      reason: 'no_payment_code',
-      hintVi:
-        `Webhook nhận được nhưng không tìm thấy mã thanh toán (tiền tố ${prefix}, ví dụ ${prefix}A1B2C3D4). ` +
-        'Giao dịch thử nghiệm SePay ("Giao dich thu nghiem...") không có mã — không khớp đơn. ' +
-        'Để thanh toán thật: checkout trên site → chuyển khoản đúng số tiền và ghi đúng mã CK vào nội dung. ' +
-        'PayOS: nội dung cần có orderCode 6–9 chữ số.',
-      expectedPrefix: prefix,
-      receivedCode: payload.code || null,
-      receivedContentPreview: String(payload.content || '').slice(0, 120) || null,
-      payosOrderCodeFound: payosOrderCode,
-      payosBridge: payosResult,
-    })
+    return sepayWebhookOk()
   }
 
   if (await isSepayOrderAlreadyCompleted(paymentCode)) {
-    return NextResponse.json({ success: true, paymentCode, alreadyCompleted: true })
+    await markSepayWebhookProcessed(txId, paymentCode, Number(payload.transferAmount) || 0)
+    console.info('[sepay webhook] already completed', paymentCode, txId)
+    return sepayWebhookOk()
   }
 
   const pending = await loadSepayPendingFromDb(paymentCode)
@@ -133,20 +106,10 @@ export async function POST(request: Request) {
     })
     if (payosResult.handled && payosResult.completed) {
       await markSepayWebhookProcessed(txId, `PAYOS-${payosResult.orderCode}`, Number(payload.transferAmount) || 0)
-      return NextResponse.json({
-        success: true,
-        completed: true,
-        payosOrderCode: payosResult.orderCode,
-        via: 'sepay_bank_webhook',
-      })
+      return sepayWebhookOk()
     }
     console.warn('[sepay webhook] no pending order', { paymentCode, txId })
-    return NextResponse.json({
-      success: true,
-      paymentCode,
-      pendingFound: false,
-      hint: 'Không có đơn chờ với mã CK này hoặc đã hết hạn.',
-    })
+    return sepayWebhookOk()
   }
 
   const transferAmount = Number(payload.transferAmount) || 0
@@ -156,29 +119,18 @@ export async function POST(request: Request) {
       transferAmount,
       expected: pending.amountVnd,
     })
-    return NextResponse.json({
-      success: true,
-      paymentCode,
-      completed: false,
-      reason: 'amount_mismatch',
-      transferAmount,
-      expectedAmount: pending.amountVnd,
-    })
+    return sepayWebhookOk()
   }
 
   try {
     await completeSepayOrderFromPending(pending, txId)
     await markSepayWebhookProcessed(txId, paymentCode, transferAmount)
     console.info('[sepay webhook] order completed', paymentCode, txId)
-    return NextResponse.json({ success: true, paymentCode, completed: true })
+    return sepayWebhookOk()
   } catch (err) {
     console.error('[sepay webhook] complete failed', paymentCode, err)
     return NextResponse.json(
-      {
-        success: false,
-        paymentCode,
-        error: err instanceof Error ? err.message : 'Complete order failed',
-      },
+      { success: false, error: err instanceof Error ? err.message : 'Complete order failed' },
       { status: 500 },
     )
   }

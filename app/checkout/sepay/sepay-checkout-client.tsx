@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -43,14 +43,14 @@ export function SepayCheckoutClient() {
   const [alreadyPaid, setAlreadyPaid] = useState(false)
   const [copied, setCopied] = useState(false)
   const [confirming, setConfirming] = useState(false)
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const checkPaid = useCallback(async (code: string): Promise<boolean> => {
+  const checkPaid = useCallback(async (code: string, syncFromApi = false): Promise<boolean> => {
     try {
-      const res = await fetch(
-        `/api/payments/sepay/verify?code=${encodeURIComponent(code)}`,
-        { credentials: 'same-origin' },
-      )
+      const q = new URLSearchParams({ code })
+      if (syncFromApi) q.set('sync', '1')
+      const res = await fetch(`/api/payments/sepay/verify?${q.toString()}`, {
+        credentials: 'same-origin',
+      })
       const data = (await res.json()) as { paid?: boolean; sepayTransactionId?: number }
       return res.ok && data.paid === true && data.sepayTransactionId != null
     } catch {
@@ -64,7 +64,6 @@ export function SepayCheckoutClient() {
     setCart(null)
     await refreshUserData()
     confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } })
-    if (pollRef.current) clearInterval(pollRef.current)
   }, [refreshUserData, setCart])
 
   useEffect(() => {
@@ -127,35 +126,6 @@ export function SepayCheckoutClient() {
     void init()
   }, [authReady, currentUser, codeParam, language, router])
 
-  /** Tự poll — chỉ success khi webhook SePay đã ghi sepay_transaction_id */
-  useEffect(() => {
-    if (!display?.paymentCode || paid || alreadyPaid) return
-
-    const code = display.paymentCode
-    let cancelled = false
-
-    const tick = async () => {
-      if (cancelled) return
-      setConfirming(true)
-      const ok = await checkPaid(code)
-      if (cancelled) return
-      if (ok) {
-        await handlePaid()
-        return
-      }
-      setConfirming(false)
-    }
-
-    void tick()
-    pollRef.current = setInterval(() => void tick(), 4000)
-
-    return () => {
-      cancelled = true
-      if (pollRef.current) clearInterval(pollRef.current)
-      pollRef.current = null
-    }
-  }, [display?.paymentCode, paid, alreadyPaid, checkPaid, handlePaid])
-
   const copyCode = async () => {
     if (!display?.transferDescription) return
     await navigator.clipboard.writeText(display.transferDescription)
@@ -167,7 +137,7 @@ export function SepayCheckoutClient() {
     if (!display?.paymentCode) return
     setConfirming(true)
     setPaymentHint('')
-    const ok = await checkPaid(display.paymentCode)
+    const ok = await checkPaid(display.paymentCode, true)
     if (ok) {
       await handlePaid()
       return
