@@ -1,11 +1,4 @@
 import { updateSession } from '@/lib/supabase/proxy'
-import { getAppSessionFromRequest } from '@/lib/auth/middleware-session'
-import {
-  isAuthFormPath,
-  requiresAdminSession,
-  requiresUserSession,
-  roleAllowsAdmin,
-} from '@/lib/auth/route-access'
 import { type NextRequest, NextResponse } from 'next/server'
 
 const WEBHOOK_PATHS = new Set([
@@ -17,6 +10,7 @@ function normalizePath(pathname: string): string {
   return pathname.replace(/\/+$/, '') || '/'
 }
 
+/** Webhook: rewrite apex → www nội bộ (tránh 307). */
 function handlePaymentWebhook(request: NextRequest): NextResponse {
   const path = normalizePath(request.nextUrl.pathname)
   if (!WEBHOOK_PATHS.has(path)) {
@@ -55,48 +49,10 @@ function redirectOAuthCodeToCallback(request: NextRequest): NextResponse | null 
   return NextResponse.redirect(url)
 }
 
-function applyAppSessionGuards(request: NextRequest): NextResponse | null {
-  const path = normalizePath(request.nextUrl.pathname)
-
-  if (path.startsWith('/api') || path.startsWith('/_next')) {
-    return null
-  }
-
-  const session = getAppSessionFromRequest(request)
-  const switchAccount = request.nextUrl.searchParams.get('switch') === '1'
-
-  if (isAuthFormPath(path) && session && !switchAccount) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/'
-    url.search = ''
-    return NextResponse.redirect(url)
-  }
-
-  if (requiresAdminSession(path)) {
-    if (!session) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/auth/login'
-      url.search = `?next=${encodeURIComponent(path)}`
-      return NextResponse.redirect(url)
-    }
-    if (!roleAllowsAdmin(session)) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/'
-      url.search = ''
-      return NextResponse.redirect(url)
-    }
-  }
-
-  if (requiresUserSession(path) && !session) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/auth/login'
-    url.search = `?next=${encodeURIComponent(`${path}${request.nextUrl.search}`)}`
-    return NextResponse.redirect(url)
-  }
-
-  return null
-}
-
+/**
+ * Middleware chạy trên Vercel Edge — không dùng Node crypto (verify session).
+ * Bảo vệ trang: client (RequireAuth) + API routes (getSessionFromRequest).
+ */
 export async function middleware(request: NextRequest) {
   const path = normalizePath(request.nextUrl.pathname)
 
@@ -109,12 +65,12 @@ export async function middleware(request: NextRequest) {
     return oauthRedirect
   }
 
-  const guardResponse = applyAppSessionGuards(request)
-  if (guardResponse) {
-    return guardResponse
+  try {
+    return await updateSession(request)
+  } catch (err) {
+    console.error('[middleware] updateSession failed', err)
+    return NextResponse.next()
   }
-
-  return await updateSession(request)
 }
 
 export const config = {
