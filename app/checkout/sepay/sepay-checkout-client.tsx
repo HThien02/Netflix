@@ -38,21 +38,17 @@ export function SepayCheckoutClient() {
   const [display, setDisplay] = useState<SepayDisplay | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [paymentHint, setPaymentHint] = useState('')
   const [paid, setPaid] = useState(false)
   const [alreadyPaid, setAlreadyPaid] = useState(false)
   const [copied, setCopied] = useState(false)
-  const [confirming, setConfirming] = useState(false)
 
-  const checkPaid = useCallback(async (code: string, syncFromApi = false): Promise<boolean> => {
+  const checkPaid = useCallback(async (code: string): Promise<boolean> => {
     try {
-      const q = new URLSearchParams({ code })
-      if (syncFromApi) q.set('sync', '1')
-      const res = await fetch(`/api/payments/sepay/verify?${q.toString()}`, {
+      const res = await fetch(`/api/payments/sepay/verify?code=${encodeURIComponent(code)}`, {
         credentials: 'same-origin',
       })
       const data = (await res.json()) as { paid?: boolean; sepayTransactionId?: number }
-      return res.ok && data.paid === true && data.sepayTransactionId != null
+      return data.paid === true && data.sepayTransactionId != null
     } catch {
       return false
     }
@@ -106,6 +102,8 @@ export function SepayCheckoutClient() {
         const orderData = await orderRes.json()
 
         if (orderRes.ok && orderData.paid === true && orderData.sepayTransactionId) {
+          clearSepayPendingCheckout()
+          setCart(null)
           setAlreadyPaid(true)
           return
         }
@@ -124,26 +122,31 @@ export function SepayCheckoutClient() {
     }
 
     void init()
-  }, [authReady, currentUser, codeParam, language, router])
+  }, [authReady, currentUser, codeParam, language, router, setCart])
+
+  useEffect(() => {
+    if (!display?.paymentCode || paid || alreadyPaid || loading) return
+
+    let cancelled = false
+
+    const poll = async () => {
+      const ok = await checkPaid(display.paymentCode)
+      if (!cancelled && ok) await handlePaid()
+    }
+
+    void poll()
+    const id = window.setInterval(() => void poll(), 4000)
+    return () => {
+      cancelled = true
+      window.clearInterval(id)
+    }
+  }, [display?.paymentCode, paid, alreadyPaid, loading, checkPaid, handlePaid])
 
   const copyCode = async () => {
     if (!display?.transferDescription) return
     await navigator.clipboard.writeText(display.transferDescription)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
-  }
-
-  const onManualCheck = async () => {
-    if (!display?.paymentCode) return
-    setConfirming(true)
-    setPaymentHint('')
-    const ok = await checkPaid(display.paymentCode, true)
-    if (ok) {
-      await handlePaid()
-      return
-    }
-    setConfirming(false)
-    setPaymentHint(t('checkout.sepayNotPaidYet', language))
   }
 
   if (loading) {
@@ -157,22 +160,7 @@ export function SepayCheckoutClient() {
     )
   }
 
-  if (alreadyPaid) {
-    return (
-      <AppLayout>
-        <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4">
-          <CheckCircle2 size={72} className="text-green-500 mb-4" />
-          <h1 className="text-2xl font-bold text-white mb-2">{t('checkout.confirmed', language)}</h1>
-          <p className="text-gray-400 mb-6">{t('checkout.confirmedDesc', language)}</p>
-          <Link href="/my-accounts" className="btn-primary-red px-8 py-3 rounded-lg">
-            {t('checkout.viewAccounts', language)}
-          </Link>
-        </div>
-      </AppLayout>
-    )
-  }
-
-  if (paid) {
+  if (alreadyPaid || paid) {
     return (
       <AppLayout>
         <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4">
@@ -204,7 +192,7 @@ export function SepayCheckoutClient() {
     <AppLayout>
       <section className="bg-netflix-black min-h-screen py-10">
         <div className="container mx-auto px-4 max-w-lg">
-          <h1 className="text-2xl font-bold text-white mb-2">{t('checkout.sepayTitle', language)}</h1>
+          <h1 className="text-2xl font-bold text-white mb-1">{t('checkout.sepayTitle', language)}</h1>
           <p className="text-gray-400 text-sm mb-6">{t('checkout.sepayDesc', language)}</p>
 
           <div className="glass-dark rounded-2xl p-6 border border-white/10 space-y-5">
@@ -217,7 +205,7 @@ export function SepayCheckoutClient() {
               <div className="flex justify-center">
                 <Image
                   src={display.qrImageUrl}
-                  alt="VietQR"
+                  alt="QR"
                   width={240}
                   height={240}
                   className="rounded-lg bg-white p-2"
@@ -258,18 +246,10 @@ export function SepayCheckoutClient() {
               </div>
             </div>
 
-            <div className="flex items-center justify-center gap-2 text-gray-400 text-sm py-1">
-              {confirming && <Loader2 size={16} className="animate-spin text-netflix-red shrink-0" />}
+            <div className="flex items-center justify-center gap-2 text-gray-400 text-sm py-2">
+              <Loader2 size={16} className="animate-spin text-netflix-red shrink-0" />
               <p className="text-center">{t('checkout.sepayWaiting', language)}</p>
             </div>
-            {paymentHint && <p className="text-amber-400 text-xs text-center">{paymentHint}</p>}
-            <button
-              type="button"
-              onClick={() => void onManualCheck()}
-              className="w-full border border-white/20 text-gray-300 hover:text-white hover:border-white/40 py-2.5 rounded-lg text-sm transition-colors"
-            >
-              {t('checkout.sepayCheckPaid', language)}
-            </button>
           </div>
 
           <Link href="/checkout" className="block text-center text-gray-500 text-sm mt-6 hover:text-white">

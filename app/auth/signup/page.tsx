@@ -9,6 +9,7 @@ import { User } from '@/lib/types'
 import { t } from '@/lib/translations'
 import { motion } from 'framer-motion'
 import { Eye, EyeOff, Mail, Lock, User as UserIcon, CheckCircle } from 'lucide-react'
+import { GoogleSignInButton } from '@/components/auth/google-sign-in-button'
 
 export default function SignupPage() {
   const router = useRouter()
@@ -128,6 +129,17 @@ export default function SignupPage() {
               {error}
             </motion.div>
           )}
+
+          <GoogleSignInButton language={language} />
+
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-white/10" />
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="bg-netflix-black px-2 text-gray-500">{t('auth.orEmail', language)}</span>
+            </div>
+          </div>
 
           <form onSubmit={handleSignup} className="space-y-4 mb-6">
             {/* Full Name */}

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useRedirectIfAuthenticated } from '@/lib/hooks/use-redirect-if-authenticated'
 import Link from 'next/link'
@@ -12,6 +12,7 @@ import { Eye, EyeOff, Mail, Lock, Sparkles } from 'lucide-react'
 import { loadUserData } from '@/lib/user-data'
 import type { User } from '@/lib/types'
 import { BrandLogo } from '@/components/brand-logo'
+import { GoogleSignInButton } from '@/components/auth/google-sign-in-button'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -29,6 +30,16 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    const oauthErr = new URLSearchParams(window.location.search).get('error')
+    if (!oauthErr?.startsWith('oauth')) return
+    setError(
+      oauthErr === 'oauth_exchange'
+        ? t('auth.googleExchangeError', language)
+        : t('auth.googleError', language),
+    )
+  }, [language])
 
   if (!shouldShowAuthForm) {
     return null
@@ -129,6 +140,17 @@ export default function LoginPage() {
                   {error}
                 </div>
               )}
+
+              <GoogleSignInButton language={language} />
+
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-white/10" />
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="bg-transparent px-2 text-gray-500">{t('auth.orEmail', language)}</span>
+                </div>
+              </div>
 
               <form onSubmit={handleLogin} className="space-y-5">
                 <div>
