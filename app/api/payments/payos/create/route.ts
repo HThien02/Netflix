@@ -9,6 +9,7 @@ import {
 } from '@/lib/payos/client'
 import { setPayosPendingCookie } from '@/lib/payos/pending-cookie'
 import { savePayosPendingToDb } from '@/lib/payos/pending-store'
+import { isSupabaseConfigured } from '@/lib/auth/login'
 import { getSiteUrl } from '@/lib/site'
 import type { Cart } from '@/lib/types'
 
@@ -78,7 +79,14 @@ export async function POST(request: Request) {
       language: lang as 'vi' | 'en',
     }
 
-    await savePayosPendingToDb(pendingPayload, payos.amountSent)
+    const savedPending = await savePayosPendingToDb(pendingPayload, payos.amountSent)
+    if (isSupabaseConfigured() && !savedPending) {
+      throw new Error(
+        language === 'vi'
+          ? 'Không lưu được đơn chờ PayOS. Chạy migration payos_pending_orders trên Supabase.'
+          : 'Could not save PayOS pending order. Run payos_pending_orders migration.',
+      )
+    }
 
     const res = NextResponse.json({
       checkoutUrl: payos.checkoutUrl,

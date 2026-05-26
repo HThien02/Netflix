@@ -1,4 +1,4 @@
-import { after, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { isPayosConfigured } from '@/lib/payos/client'
 import { verifyPayosDataSignature } from '@/lib/payos/signature'
 import { isPayosOrderAlreadyCompleted, loadPayosPendingFromDb } from '@/lib/payos/pending-store'
@@ -50,23 +50,51 @@ export async function POST(request: Request) {
     desc: data.desc,
   })
 
-  // PayOS yêu cầu HTTP 2xx nhanh — xử lý đơn ở background
-  if (orderCode && (!code || code === '00')) {
-    after(async () => {
-      try {
-        if (await isPayosOrderAlreadyCompleted(orderCode)) return
-        const pending = await loadPayosPendingFromDb(orderCode)
-        if (!pending) {
-          console.info('[payos webhook] no pending row for orderCode', orderCode)
-          return
-        }
-        await completePayosOrderFromPending(pending)
-        console.info('[payos webhook] order completed', orderCode)
-      } catch (err) {
-        console.error('[payos webhook] process failed', orderCode, err)
-      }
+  if (!orderCode || (code && code !== '00')) {
+    return NextResponse.json({ success: true, skipped: true, orderCode }, { status: 200 })
+  }
+
+  if (await isPayosOrderAlreadyCompleted(orderCode)) {
+    return NextResponse.json({
+      success: true,
+      orderCode,
+      completed: true,
+      alreadyCompleted: true,
+      message: 'Order already completed',
     })
   }
 
-  return NextResponse.json({ success: true }, { status: 200 })
+  const pending = await loadPayosPendingFromDb(orderCode)
+  if (!pending) {
+    console.warn('[payos webhook] no payos_pending_orders row', { orderCode })
+    return NextResponse.json({
+      success: true,
+      orderCode,
+      completed: false,
+      pendingFound: false,
+      hint:
+        'Webhook OK nhưng không có đơn chờ với orderCode này. Dùng orderCode thật từ /api/payments/payos/create (mẫu test PayOS dùng 123).',
+    })
+  }
+
+  try {
+    await completePayosOrderFromPending(pending)
+    console.info('[payos webhook] order completed', orderCode)
+    return NextResponse.json({
+      success: true,
+      orderCode,
+      completed: true,
+      pendingFound: true,
+    })
+  } catch (err) {
+    console.error('[payos webhook] process failed', orderCode, err)
+    return NextResponse.json(
+      {
+        success: false,
+        orderCode,
+        error: err instanceof Error ? err.message : 'Complete order failed',
+      },
+      { status: 500 },
+    )
+  }
 }

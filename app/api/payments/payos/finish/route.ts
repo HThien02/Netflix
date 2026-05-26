@@ -11,7 +11,7 @@ import {
   readPayosPendingCookie,
 } from '@/lib/payos/pending-cookie'
 import { completePayosOrderFromPending } from '@/lib/payos/complete-payos-order'
-import { loadPayosPendingFromDb } from '@/lib/payos/pending-store'
+import { isPayosOrderAlreadyCompleted, loadPayosPendingFromDb } from '@/lib/payos/pending-store'
 import { isSupabaseConfigured } from '@/lib/auth/login'
 import { completeOrderServer } from '@/lib/orders/complete-order'
 
@@ -31,6 +31,19 @@ export async function POST(request: Request) {
 
     if (!orderCode) {
       return NextResponse.json({ error: 'Missing orderCode' }, { status: 400 })
+    }
+
+    if (await isPayosOrderAlreadyCompleted(orderCode)) {
+      const res = NextResponse.json({
+        alreadyCompleted: true,
+        orderCode,
+        message:
+          language === 'vi'
+            ? 'Đơn đã hoàn tất (webhook hoặc lần trước). Vào Tài khoản của tôi.'
+            : 'Order already completed. Go to My accounts.',
+      })
+      clearPayosPendingCookie(res)
+      return res
     }
 
     if (isPayosReturnCancelled({ status, cancel })) {

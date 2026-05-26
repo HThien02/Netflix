@@ -18,7 +18,11 @@ export async function savePayosPendingToDb(payload: PayosPendingPayload, amountV
     },
     { onConflict: 'order_code' },
   )
-  return !error
+  if (error) {
+    console.error('[payos pending] save failed', error.message)
+    return false
+  }
+  return true
 }
 
 export async function loadPayosPendingFromDb(

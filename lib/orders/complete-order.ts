@@ -168,25 +168,28 @@ export async function completeOrderServer(input: CompleteOrderInput) {
         `${s.profile_name} (slot ${s.slot_number})${s.pin ? ` PIN ${s.pin}` : ''} — ${first.serviceEmail}`,
     ) || []
 
-  await sendPaymentSuccessEmail(
-    userEmail,
-    userName,
-    language,
-    invoiceNumber,
-    formatCurrency(cart.total),
-    accounts.map((a) => `${a.productName} · ${a.slotsCount} slot`),
-  )
-
-  await sendAdminNewOrderEmail(language, {
-    customerName: userName,
-    customerEmail: userEmail,
-    invoiceNumber,
-    total: formatCurrency(cart.total),
-    productName: productLabel,
-    slotsCount: first?.slotsCount || 1,
-    slotLines,
-    poolSummary: poolSummaryText,
-  })
+  try {
+    await sendPaymentSuccessEmail(
+      userEmail,
+      userName,
+      language,
+      invoiceNumber,
+      formatCurrency(cart.total),
+      accounts.map((a) => `${a.productName} · ${a.slotsCount} slot`),
+    )
+    await sendAdminNewOrderEmail(language, {
+      customerName: userName,
+      customerEmail: userEmail,
+      invoiceNumber,
+      total: formatCurrency(cart.total),
+      productName: productLabel,
+      slotsCount: first?.slotsCount || 1,
+      slotLines,
+      poolSummary: poolSummaryText,
+    })
+  } catch (emailErr) {
+    console.error('[complete-order] email failed (order still saved)', emailErr)
+  }
 
   return { invoice, accounts }
 }
