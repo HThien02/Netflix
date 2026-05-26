@@ -1,3 +1,4 @@
+import { shouldForwardOAuthQueryToCallback } from '@/lib/auth/oauth-query'
 import { updateSession } from '@/lib/supabase/proxy'
 import { type NextRequest, NextResponse } from 'next/server'
 
@@ -35,24 +36,17 @@ function handlePaymentWebhook(request: NextRequest): NextResponse {
   return NextResponse.next()
 }
 
-/** Supabase OAuth đôi khi trả về Site URL (/) + ?code= — chuyển sang /auth/callback */
+/** Chỉ chuyển mã OAuth UUID — không nhầm ?code=NH... (SePay checkout) */
 function redirectOAuthCodeToCallback(request: NextRequest): NextResponse | null {
-  const path = normalizePath(request.nextUrl.pathname)
-  if (path === '/auth/callback') return null
-
-  const code = request.nextUrl.searchParams.get('code')
-  const oauthError = request.nextUrl.searchParams.get('error')
-  if (!code && !oauthError) return null
+  if (!shouldForwardOAuthQueryToCallback(request.nextUrl.pathname, request.nextUrl.searchParams)) {
+    return null
+  }
 
   const url = request.nextUrl.clone()
   url.pathname = '/auth/callback'
   return NextResponse.redirect(url)
 }
 
-/**
- * Middleware chạy trên Vercel Edge — không dùng Node crypto (verify session).
- * Bảo vệ trang: client (RequireAuth) + API routes (getSessionFromRequest).
- */
 export async function middleware(request: NextRequest) {
   const path = normalizePath(request.nextUrl.pathname)
 

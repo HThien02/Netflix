@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { ensureUserFromOAuth } from '@/lib/auth/ensure-oauth-user'
+import { isPaymentQueryCode } from '@/lib/auth/oauth-query'
 import { signSession, setSessionOnResponse } from '@/lib/auth/session-cookie'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -11,11 +12,23 @@ function safeNextPath(raw: string | null): string {
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl
   const code = searchParams.get('code')
+  const oauthErr = searchParams.get('error')
   const next = safeNextPath(searchParams.get('next'))
   const origin = request.nextUrl.origin
 
+  if (oauthErr) {
+    return NextResponse.redirect(`${origin}/auth/login?error=oauth_${oauthErr}`)
+  }
+
   if (!code) {
     return NextResponse.redirect(`${origin}/auth/login?error=oauth_missing_code`)
+  }
+
+  // Nhầm mã SePay NH... → quay lại trang thanh toán
+  if (isPaymentQueryCode(code)) {
+    return NextResponse.redirect(
+      `${origin}/checkout/sepay?code=${encodeURIComponent(code.toUpperCase())}`,
+    )
   }
 
   try {
@@ -50,7 +63,6 @@ export async function GET(request: NextRequest) {
     const res = NextResponse.redirect(`${origin}${next}`)
     setSessionOnResponse(res, token)
 
-    // Tránh Supabase Auth cookie giữ phiên Google cũ lần sau
     try {
       await supabase.auth.signOut()
     } catch {
