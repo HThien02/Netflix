@@ -5,11 +5,20 @@ import { usePathname } from 'next/navigation'
 import { AppLayout } from '@/components/app-layout'
 import { useApp } from '@/lib/context'
 import { t } from '@/lib/translations'
-import { Database, Ban, ShieldAlert, LayoutDashboard, Package, Landmark } from 'lucide-react'
+import {
+  Database,
+  Ban,
+  ShieldAlert,
+  LayoutDashboard,
+  Package,
+  Landmark,
+  MessageSquare,
+} from 'lucide-react'
 
 const links = [
   { href: '/admin/dashboard', labelKey: 'admin.dashboard', icon: LayoutDashboard },
   { href: '/admin/products', labelKey: 'admin.productsManage', icon: Package },
+  { href: '/admin/support', labelKey: 'admin.support', icon: MessageSquare },
   { href: '/admin/sepay', labelKey: 'admin.sepay', icon: Landmark },
   { href: '/admin/pool', labelKey: 'admin.pool', icon: Database },
   { href: '/admin/rentals', labelKey: 'admin.rentals', icon: Ban },
@@ -57,6 +66,18 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   )
 }
 
-export function adminHeaders(userId: string) {
+export function adminHeaders(userId: string): HeadersInit {
   return { 'Content-Type': 'application/json', 'x-admin-user-id': userId }
+}
+
+/** Fetch admin API kèm session cookie (bắt buộc trên production) */
+export function adminFetch(url: string, userId: string, init?: RequestInit) {
+  return fetch(url, {
+    ...init,
+    credentials: 'same-origin',
+    headers: {
+      ...adminHeaders(userId),
+      ...(init?.headers as Record<string, string> | undefined),
+    },
+  })
 }

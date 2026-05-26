@@ -17,6 +17,12 @@ export type SepayApiTransaction = {
   reference_number?: string
 }
 
+export type SepayListResult = {
+  transactions: SepayApiTransaction[]
+  error?: string
+  httpStatus?: number
+}
+
 export function isSepayApiConfigured(): boolean {
   return Boolean(process.env.SEPAY_API_TOKEN?.trim())
 }
@@ -35,51 +41,145 @@ function mapV2Row(row: Record<string, unknown>): SepayApiTransaction {
   }
 }
 
-async function listSepayTransactionsV2(options: {
-  accountNumber?: string
-  limit?: number
-  transactionDateMin?: string
-  amountIn?: number
-  searchQuery?: string
-}): Promise<SepayApiTransaction[]> {
-  const token = process.env.SEPAY_API_TOKEN?.trim()
-  if (!token) return []
+function formatDateTo(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} 23:59:59`
+}
 
-  const params = new URLSearchParams({
-    per_page: String(Math.min(options.limit ?? 100, 100)),
-  })
-  const account = options.accountNumber || process.env.SEPAY_BANK_ACCOUNT_NUMBER?.trim()
-  if (account) params.set('account_number', account)
-  if (options.transactionDateMin) {
-    params.set('transaction_date_from', options.transactionDateMin.slice(0, 10))
-  }
-  if (options.searchQuery) {
-    params.set('q', options.searchQuery)
-  } else if (options.amountIn != null && options.amountIn > 0) {
-    params.set('amount_in_min', String(Math.round(options.amountIn)))
-    params.set('amount_in_max', String(Math.round(options.amountIn)))
-  }
-
+async function fetchSepayPage(
+  token: string,
+  params: URLSearchParams,
+): Promise<{ rows: SepayApiTransaction[]; hasMore: boolean; error?: string; httpStatus?: number }> {
   const res = await fetch(`${SEPAY_API_V2}/transactions?${params.toString()}`, {
     headers: { Authorization: `Bearer ${token}` },
     cache: 'no-store',
   })
 
-  if (!res.ok) return []
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    return {
+      rows: [],
+      hasMore: false,
+      httpStatus: res.status,
+      error: `SePay API HTTP ${res.status}${text ? `: ${text.slice(0, 180)}` : ''}`,
+    }
+  }
 
-  const body = (await res.json()) as { status?: string; data?: Record<string, unknown>[] }
-  if (body.status !== 'success' || !Array.isArray(body.data)) return []
-  return body.data.map(mapV2Row)
+  const body = (await res.json()) as {
+    status?: string
+    message?: string
+    data?: Record<string, unknown>[]
+    meta?: { pagination?: { has_more?: boolean } }
+  }
+
+  if (body.status !== 'success' || !Array.isArray(body.data)) {
+    return {
+      rows: [],
+      hasMore: false,
+      error: body.message || 'SePay API trả về dữ liệu không hợp lệ',
+    }
+  }
+
+  return {
+    rows: body.data.map(mapV2Row),
+    hasMore: Boolean(body.meta?.pagination?.has_more),
+  }
+}
+
+async function listSepayTransactionsV2(options: {
+  accountNumber?: string
+  limit?: number
+  transactionDateMin?: string
+  transactionDateTo?: string
+  amountIn?: number
+  searchQuery?: string
+}): Promise<SepayListResult> {
+  const token = process.env.SEPAY_API_TOKEN?.trim()
+  if (!token) return { transactions: [], error: 'SEPAY_API_TOKEN chưa cấu hình' }
+
+  const targetLimit = Math.min(options.limit ?? 100, 500)
+  const perPage = 100
+  const account = options.accountNumber || process.env.SEPAY_BANK_ACCOUNT_NUMBER?.trim()
+
+  const dateFrom = options.transactionDateMin?.slice(0, 10) || undefined
+  const dateTo =
+    options.transactionDateTo?.slice(0, 10) ||
+    formatDateTo(new Date()).slice(0, 10)
+
+  const runQuery = async (withAccount: boolean) => {
+    const all: SepayApiTransaction[] = []
+    let page = 1
+    let lastError: string | undefined
+
+    while (all.length < targetLimit) {
+      const params = new URLSearchParams({
+        page: String(page),
+        per_page: String(perPage),
+      })
+      if (withAccount && account) params.set('account_number', account)
+      if (dateFrom) params.set('transaction_date_from', `${dateFrom} 00:00:00`)
+      if (dateTo) params.set('transaction_date_to', `${dateTo} 23:59:59`)
+      if (options.searchQuery) {
+        params.set('q', options.searchQuery)
+      } else if (options.amountIn != null && options.amountIn > 0) {
+        params.set('amount_in_min', String(Math.round(options.amountIn)))
+        params.set('amount_in_max', String(Math.round(options.amountIn)))
+      }
+
+      const result = await fetchSepayPage(token, params)
+      if (result.error && all.length === 0) {
+        lastError = result.error
+        break
+      }
+      all.push(...result.rows)
+      if (!result.hasMore || result.rows.length === 0) break
+      page += 1
+      if (page > 20) break
+    }
+
+    return { transactions: all.slice(0, targetLimit), error: lastError }
+  }
+
+  let result = await runQuery(Boolean(account))
+  if (result.transactions.length === 0 && account && !result.error) {
+    result = await runQuery(false)
+  }
+  if (result.transactions.length === 0 && account && result.error) {
+    const fallback = await runQuery(false)
+    if (fallback.transactions.length > 0) return fallback
+  }
+
+  return result
 }
 
 export async function listSepayTransactions(options: {
   accountNumber?: string
   limit?: number
   transactionDateMin?: string
+  transactionDateTo?: string
   amountIn?: number
   searchQuery?: string
 }): Promise<SepayApiTransaction[]> {
   if (!isSepayApiConfigured()) return []
+  const result = await listSepayTransactionsV2(options)
+  if (result.error) {
+    console.error('[sepay]', result.error)
+  }
+  return result.transactions
+}
+
+/** Giống listSepayTransactions nhưng trả lỗi API (cho admin UI) */
+export async function listSepayTransactionsDetailed(options: {
+  accountNumber?: string
+  limit?: number
+  transactionDateMin?: string
+  transactionDateTo?: string
+  amountIn?: number
+  searchQuery?: string
+}): Promise<SepayListResult> {
+  if (!isSepayApiConfigured()) {
+    return { transactions: [], error: 'SEPAY_API_TOKEN chưa cấu hình' }
+  }
   return listSepayTransactionsV2(options)
 }
 

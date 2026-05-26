@@ -16,12 +16,16 @@ type DbTicket = {
   admin_responded_at?: string | null
   created_at: string
   updated_at: string
+  users?: { email?: string; full_name?: string } | { email?: string; full_name?: string }[] | null
 }
 
 export function mapDbTicket(row: DbTicket): SupportTicket {
+  const user = Array.isArray(row.users) ? row.users[0] : row.users
   return {
     id: row.id,
     userId: row.user_id,
+    userEmail: user?.email ? String(user.email) : undefined,
+    userName: user?.full_name ? String(user.full_name) : undefined,
     subject: row.subject,
     description: row.description || '',
     priority: row.priority as SupportTicket['priority'],
@@ -97,6 +101,80 @@ export async function listUserSupportTickets(userId: string): Promise<SupportTic
   }
 
   return (data as DbTicket[]).map(mapDbTicket)
+}
+
+export async function listAllSupportTickets(filters?: {
+  status?: SupportTicket['status'] | 'all'
+}): Promise<SupportTicket[]> {
+  if (!isSupabaseConfigured()) return []
+
+  const supabase = createAdminClient()
+  let query = supabase
+    .from('support_tickets')
+    .select('*, users(email, full_name)')
+    .order('created_at', { ascending: false })
+
+  if (filters?.status && filters.status !== 'all') {
+    query = query.eq('status', filters.status)
+  }
+
+  const { data, error } = await query
+
+  if (error) {
+    console.error('[support] admin list failed', error.message)
+    return []
+  }
+
+  return (data as DbTicket[]).map(mapDbTicket)
+}
+
+export async function getSupportTicketById(ticketId: string): Promise<SupportTicket | null> {
+  if (!isSupabaseConfigured()) return null
+
+  const supabase = createAdminClient()
+  const { data, error } = await supabase
+    .from('support_tickets')
+    .select('*, users(email, full_name)')
+    .eq('id', ticketId)
+    .maybeSingle()
+
+  if (error || !data) return null
+  return mapDbTicket(data as DbTicket)
+}
+
+export async function adminRespondToTicket(
+  ticketId: string,
+  input: {
+    adminResponse: string
+    status?: SupportTicket['status']
+    priority?: SupportTicket['priority']
+  },
+): Promise<SupportTicket> {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase not configured')
+  }
+
+  const supabase = createAdminClient()
+  const update: Record<string, unknown> = {
+    admin_response: input.adminResponse.trim(),
+    admin_responded_at: new Date().toISOString(),
+  }
+  if (input.status) update.status = input.status
+  if (input.priority) update.priority = input.priority
+  if (!input.status) update.status = 'in_progress'
+
+  const { data, error } = await supabase
+    .from('support_tickets')
+    .update(update)
+    .eq('id', ticketId)
+    .select('*, users(email, full_name)')
+    .single()
+
+  if (error || !data) {
+    throw new Error(error?.message || 'Could not update ticket')
+  }
+
+  return mapDbTicket(data as DbTicket)
 }
 
 export async function createSupportTicket(input: {

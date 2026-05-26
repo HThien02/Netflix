@@ -1,11 +1,11 @@
 'use client'
 
 import React, { useCallback, useEffect, useState } from 'react'
-import { AdminShell, adminHeaders } from '@/components/admin/admin-shell'
+import { AdminShell, adminFetch } from '@/components/admin/admin-shell'
 import { useApp } from '@/lib/context'
 import { t } from '@/lib/translations'
 import { formatCurrency } from '@/lib/utils/format'
-import { Loader2, ArrowDownLeft, ArrowUpRight, RefreshCw } from 'lucide-react'
+import { Loader2, ArrowDownLeft, ArrowUpRight, RefreshCw, AlertTriangle } from 'lucide-react'
 
 type Txn = {
   id: string
@@ -25,28 +25,41 @@ type Summary = {
   count: number
 }
 
+type DbSummary = {
+  totalIncoming: number
+  countIncoming: number
+  countPending: number
+  orderCount: number
+}
+
 export default function AdminSepayPage() {
   const { currentUser, language } = useApp()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [apiError, setApiError] = useState('')
+  const [configured, setConfigured] = useState(false)
   const [days, setDays] = useState(30)
   const [summary, setSummary] = useState<Summary | null>(null)
+  const [dbSummary, setDbSummary] = useState<DbSummary | null>(null)
   const [transactions, setTransactions] = useState<Txn[]>([])
 
   const load = useCallback(async () => {
     if (!currentUser) return
     setLoading(true)
     setError('')
+    setApiError('')
     try {
-      const res = await fetch(`/api/admin/sepay/transactions?days=${days}&limit=200`, {
-        headers: adminHeaders(currentUser.id),
-      })
+      const res = await adminFetch(`/api/admin/sepay/transactions?days=${days}&limit=300`, currentUser.id)
       const data = await res.json()
       if (!res.ok) {
         throw new Error(data.error || 'Failed to load')
       }
+      setConfigured(Boolean(data.configured))
       setSummary(data.summary)
+      setDbSummary(data.dbSummary || null)
       setTransactions(data.transactions || [])
+      if (data.apiError) setApiError(data.apiError)
+      if (!data.configured && data.error) setError(data.error)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error')
     } finally {
@@ -93,17 +106,57 @@ export default function AdminSepayPage() {
       )}
 
       {error && !loading && (
-        <div className="glass-dark rounded-xl p-6 border border-red-500/30 text-red-400">{error}</div>
+        <div className="glass-dark rounded-xl p-6 border border-red-500/30 text-red-400 mb-6">
+          {error}
+        </div>
       )}
 
-      {!loading && !error && summary && (
+      {apiError && !loading && (
+        <div className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-200 text-sm mb-6">
+          <AlertTriangle size={20} className="shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium">{t('admin.sepayApiWarning', language)}</p>
+            <p className="text-amber-200/80 mt-1">{apiError}</p>
+            {dbSummary && (
+              <p className="text-amber-200/70 mt-2">{t('admin.sepayDbFallback', language)}</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {!loading && summary && (
         <>
+          {dbSummary && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+              <StatCard
+                label={t('admin.sepayDbOrders', language)}
+                value={String(dbSummary.orderCount)}
+              />
+              <StatCard
+                label={t('admin.sepayDbCompleted', language)}
+                value={String(dbSummary.countIncoming)}
+              />
+              <StatCard
+                label={t('admin.sepayDbPending', language)}
+                value={String(dbSummary.countPending)}
+              />
+              <StatCard
+                label={t('admin.sepayDbTotal', language)}
+                value={formatCurrency(dbSummary.totalIncoming)}
+              />
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <StatCard
               icon={<ArrowDownLeft className="text-green-400" size={22} />}
               label={t('admin.sepayTotalIn', language)}
               value={formatCurrency(summary.totalIncoming)}
-              sub={`${summary.countIncoming} GD`}
+              sub={
+                configured
+                  ? `${summary.countIncoming} GD (API)`
+                  : t('admin.sepayDbOnly', language)
+              }
             />
             <StatCard
               icon={<ArrowUpRight className="text-amber-400" size={22} />}
@@ -111,10 +164,7 @@ export default function AdminSepayPage() {
               value={formatCurrency(summary.totalOutgoing)}
               sub={`${summary.countOutgoing} GD`}
             />
-            <StatCard
-              label={t('admin.sepayTxnCount', language)}
-              value={String(summary.count)}
-            />
+            <StatCard label={t('admin.sepayTxnCount', language)} value={String(summary.count)} />
             <StatCard
               label={t('admin.sepayNet', language)}
               value={formatCurrency(summary.totalIncoming - summary.totalOutgoing)}
@@ -136,7 +186,9 @@ export default function AdminSepayPage() {
                   {transactions.length === 0 ? (
                     <tr>
                       <td colSpan={4} className="p-8 text-center text-gray-500">
-                        {t('admin.sepayEmpty', language)}
+                        {configured
+                          ? t('admin.sepayEmpty', language)
+                          : t('admin.sepayConfigureToken', language)}
                       </td>
                     </tr>
                   ) : (
@@ -145,10 +197,14 @@ export default function AdminSepayPage() {
                         <td className="p-4 text-gray-300 whitespace-nowrap">{tx.date}</td>
                         <td className="p-4 whitespace-nowrap">
                           {tx.amountIn > 0 && (
-                            <span className="text-green-400 font-medium">+{formatCurrency(tx.amountIn)}</span>
+                            <span className="text-green-400 font-medium">
+                              +{formatCurrency(tx.amountIn)}
+                            </span>
                           )}
                           {tx.amountOut > 0 && (
-                            <span className="text-amber-400 font-medium">-{formatCurrency(tx.amountOut)}</span>
+                            <span className="text-amber-400 font-medium">
+                              -{formatCurrency(tx.amountOut)}
+                            </span>
                           )}
                         </td>
                         <td className="p-4 font-mono text-netflix-red text-xs">

@@ -1,4 +1,8 @@
-import { listSepayTransactions, isSepayApiConfigured } from '@/lib/sepay/api-client'
+import {
+  listSepayTransactionsDetailed,
+  isSepayApiConfigured,
+  normalizeSepayTransactionStorageId,
+} from '@/lib/sepay/api-client'
 import { listSepayOrdersByUser } from '@/lib/sepay/pending-store'
 import {
   dateMinDaysAgo,
@@ -24,6 +28,7 @@ export async function getUserSepayTransactionReport(
   orders: UserSepayPaymentRow[]
   bankTransactions: SepayTxnView[]
   summary: SepayTxnSummary
+  apiError?: string
 }> {
   const orders = await listSepayOrdersByUser(userId)
   const codes = new Set(orders.map((o) => o.paymentCode.toUpperCase()))
@@ -31,39 +36,53 @@ export async function getUserSepayTransactionReport(
     orders.map((o) => o.sepayTransactionId).filter((id): id is number => id != null),
   )
 
+  const completed = orders.filter((o) => o.status === 'completed')
+  const dbSummary: SepayTxnSummary = {
+    totalIncoming: completed.reduce((s, o) => s + o.amountVnd, 0),
+    totalOutgoing: 0,
+    countIncoming: completed.length,
+    countOutgoing: 0,
+    count: completed.length,
+  }
+
   if (!isSepayApiConfigured()) {
-    const completed = orders.filter((o) => o.status === 'completed')
     return {
       configured: false,
       orders,
       bankTransactions: [],
-      summary: {
-        totalIncoming: completed.reduce((s, o) => s + o.amountVnd, 0),
-        totalOutgoing: 0,
-        countIncoming: completed.length,
-        countOutgoing: 0,
-        count: completed.length,
-      },
+      summary: dbSummary,
     }
   }
 
-  const raw = await listSepayTransactions({
-    limit: 200,
+  const { transactions: raw, error: apiError } = await listSepayTransactionsDetailed({
+    limit: 300,
     transactionDateMin: dateMinDaysAgo(days),
   })
 
   const bankTransactions = raw
     .map(toSepayTxnView)
     .filter((tx) => {
-      if (txIds.has(Number(tx.id))) return true
-      if (tx.paymentCode && codes.has(tx.paymentCode)) return true
+      const storedId = normalizeSepayTransactionStorageId(tx.id)
+      if (txIds.has(storedId)) return true
+      if (tx.paymentCode && codes.has(tx.paymentCode.toUpperCase())) return true
+      const upperContent = tx.content.toUpperCase()
+      for (const code of codes) {
+        if (upperContent.includes(code)) return true
+      }
       return false
     })
+
+  const bankSummary = summarizeSepayTransactions(bankTransactions)
+  const summary =
+    bankSummary.totalIncoming > 0
+      ? bankSummary
+      : dbSummary
 
   return {
     configured: true,
     orders,
     bankTransactions,
-    summary: summarizeSepayTransactions(bankTransactions),
+    summary,
+    apiError,
   }
 }

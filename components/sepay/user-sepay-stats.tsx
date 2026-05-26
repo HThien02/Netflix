@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { useApp } from '@/lib/context'
 import { t } from '@/lib/translations'
 import { formatCurrency } from '@/lib/utils/format'
-import { Loader2, Landmark } from 'lucide-react'
+import { Loader2, Landmark, AlertTriangle } from 'lucide-react'
 
 type OrderRow = {
   paymentCode: string
@@ -25,6 +25,8 @@ type Txn = {
 export function UserSepayStats() {
   const { language } = useApp()
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [apiError, setApiError] = useState('')
   const [configured, setConfigured] = useState(false)
   const [orders, setOrders] = useState<OrderRow[]>([])
   const [transactions, setTransactions] = useState<Txn[]>([])
@@ -34,16 +36,25 @@ export function UserSepayStats() {
     let cancelled = false
     const load = async () => {
       setLoading(true)
+      setError('')
+      setApiError('')
       try {
         const res = await fetch('/api/payments/sepay/my-transactions?days=90', {
           credentials: 'same-origin',
         })
         const data = await res.json()
-        if (cancelled || !res.ok) return
+        if (cancelled) return
+        if (!res.ok) {
+          setError(data.error || t('sepayStats.loadFailed', language))
+          return
+        }
         setConfigured(Boolean(data.configured))
         setOrders(data.orders || [])
         setTransactions(data.bankTransactions || [])
         setTotalPaid(data.summary?.totalIncoming ?? 0)
+        if (data.apiError) setApiError(data.apiError)
+      } catch {
+        if (!cancelled) setError(t('sepayStats.loadFailed', language))
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -52,13 +63,21 @@ export function UserSepayStats() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [language])
 
   if (loading) {
     return (
       <div className="flex items-center gap-2 text-gray-400 py-6 justify-center">
         <Loader2 size={20} className="animate-spin" />
         <span className="text-sm">{t('sepayStats.loading', language)}</span>
+      </div>
+    )
+  }
+
+  if (error && orders.length === 0) {
+    return (
+      <div className="glass-dark rounded-2xl p-6 border border-red-500/30 mb-8 text-red-400 text-sm">
+        {error}
       </div>
     )
   }
@@ -73,6 +92,13 @@ export function UserSepayStats() {
         <Landmark className="text-netflix-red" size={22} />
         <h2 className="text-lg font-semibold text-white">{t('sepayStats.title', language)}</h2>
       </div>
+
+      {apiError && (
+        <div className="flex items-start gap-2 text-amber-300/90 text-xs mb-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+          <AlertTriangle size={16} className="shrink-0" />
+          <span>{t('sepayStats.apiWarning', language)}</span>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div className="bg-black/30 rounded-xl p-4">

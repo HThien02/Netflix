@@ -13,3 +13,13 @@ export const createSupportTicketSchema = z.object({
     .max(5000, 'Mô tả quá dài'),
   category: z.string().trim().max(100).optional(),
 })
+
+export const adminRespondTicketSchema = z.object({
+  adminResponse: z
+    .string()
+    .trim()
+    .min(1, 'Nội dung phản hồi không được để trống')
+    .max(5000, 'Phản hồi quá dài'),
+  status: z.enum(['open', 'in_progress', 'resolved', 'closed']).optional(),
+  priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
+})

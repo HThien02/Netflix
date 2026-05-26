@@ -157,6 +157,9 @@ export type SupportTicketAttachment = {
 export interface SupportTicket {
   id: string
   userId: string
+  /** Chỉ có khi admin xem danh sách */
+  userEmail?: string
+  userName?: string
   subject: string
   description: string
   priority: 'low' | 'medium' | 'high' | 'urgent'

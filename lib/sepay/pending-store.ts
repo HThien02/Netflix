@@ -150,6 +150,34 @@ export type SepayUserOrderRow = {
   createdAt: string
 }
 
+export type SepayAdminOrderRow = SepayUserOrderRow & {
+  userId: string
+  productNames: Record<string, string> | null
+}
+
+export async function listSepayOrdersAdmin(days = 30): Promise<SepayAdminOrderRow[]> {
+  if (!isSupabaseConfigured() || !hasSupabaseServiceRole()) return []
+  const since = new Date()
+  since.setDate(since.getDate() - days)
+  const supabase = createAdminClient()
+  const { data } = await supabase
+    .from('sepay_pending_orders')
+    .select('payment_code, user_id, amount_vnd, status, sepay_transaction_id, created_at, product_names')
+    .gte('created_at', since.toISOString())
+    .order('created_at', { ascending: false })
+    .limit(500)
+
+  return (data || []).map((row) => ({
+    paymentCode: row.payment_code,
+    userId: row.user_id,
+    amountVnd: row.amount_vnd,
+    status: row.status,
+    sepayTransactionId: row.sepay_transaction_id ?? null,
+    createdAt: row.created_at,
+    productNames: (row.product_names as Record<string, string>) || null,
+  }))
+}
+
 export async function listSepayOrdersByUser(userId: string): Promise<SepayUserOrderRow[]> {
   if (!isSupabaseConfigured() || !hasSupabaseServiceRole()) return []
   const supabase = createAdminClient()
