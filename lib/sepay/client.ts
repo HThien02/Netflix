@@ -67,11 +67,19 @@ export function normalizeSepayPaymentCode(raw: string | null | undefined): strin
 function findPaymentCodeInText(text: string): string | null {
   const upper = text.toUpperCase()
   const prefix = getSepayPaymentPrefix()
-  const idx = upper.indexOf(prefix)
-  if (idx < 0) return null
-  const tail = upper.slice(idx)
-  const match = tail.match(new RegExp(`^${prefix}[A-Z0-9]{4,16}(?![A-Z0-9])`))
-  return match ? match[0] : null
+  const re = new RegExp(`${prefix}[A-Z0-9]{4,20}`, 'g')
+  const matches = upper.match(re)
+  if (!matches?.length) return null
+  return matches[0]
+}
+
+/** Nội dung CK có chứa mã thanh toán (lỏng hơn chỉ trích regex). */
+export function transferTextContainsPaymentCode(
+  text: string | null | undefined,
+  paymentCode: string,
+): boolean {
+  if (!text || !paymentCode) return false
+  return text.toUpperCase().includes(paymentCode.toUpperCase())
 }
 
 /** Khớp mã từ webhook với đơn chờ (code hoặc trích từ content/description) */

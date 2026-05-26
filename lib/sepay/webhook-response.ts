@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 
-/** SePay chỉ chấp nhận đúng body `{"success":true}` — body khác = thất bại / retry */
+/**
+ * Phản hồi hợp lệ SePay: HTTP 200/201 + `{"success":true}` trong 30s.
+ * @see https://developer.sepay.vn/en/sepay-webhooks/tich-hop-webhook
+ */
 export function sepayWebhookOk() {
-  return NextResponse.json({ success: true })
+  return NextResponse.json({ success: true }, { status: 200 })
 }

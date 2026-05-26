@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getSessionFromRequest } from '@/lib/auth/session-cookie'
 import { isSepayApiConfigured } from '@/lib/sepay/api-client'
 import { getSepayOrderStatus, isSepayOrderAlreadyCompleted } from '@/lib/sepay/pending-store'
+import { tryCompleteFromStoredWebhookEvent } from '@/lib/sepay/complete-transfer'
 import { tryCompleteSepayFromApi } from '@/lib/sepay/sync-from-api'
 
 const POLL_INTERVAL_MS = 2000
@@ -14,6 +15,14 @@ function sleep(ms: number) {
 async function resolvePaidState(code: string) {
   let row = await getSepayOrderStatus(code)
   let paid = await isSepayOrderAlreadyCompleted(code)
+
+  if (!paid) {
+    const fromEvent = await tryCompleteFromStoredWebhookEvent(code)
+    if (fromEvent.completed) {
+      row = await getSepayOrderStatus(code)
+      paid = true
+    }
+  }
 
   if (!paid && isSepayApiConfigured()) {
     const synced = await tryCompleteSepayFromApi(code)
@@ -79,11 +88,7 @@ export async function GET(request: Request) {
       hintVi:
         row == null
           ? 'Không tìm thấy đơn chờ với mã này — tạo lại từ giỏ hàng.'
-          : 'Chưa thấy tiền vào hoặc nội dung CK chưa khớp mã. Kiểm tra đúng số tiền và nội dung "Thanh toan don hang ' +
-            code +
-            '".',
-      noteVi:
-        'Response {"success":true} trên my.sepay.vn là webhook server→server — trình duyệt không nhận được; trang chờ qua API verify này.',
+          : 'Webhook SePay có thể đã OK nhưng chưa khớp đơn (mã CK, số tiền, hoặc đơn pending). Xem Vercel Logs: [sepay webhook] not completed.',
       sepayApiSync: isSepayApiConfigured(),
     },
     { status: 402 },
