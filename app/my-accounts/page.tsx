@@ -25,13 +25,9 @@ import {
   AlertTriangle,
 } from 'lucide-react'
 import type { PurchasedAccount } from '@/lib/types'
-import { planLabel } from '@/lib/plans'
+import { daysUntilExpiry, planLabel } from '@/lib/plans'
 import type { PlanType } from '@/lib/plans'
 import { UserSepayStats } from '@/components/sepay/user-sepay-stats'
-
-function daysLeft(expiresAt: Date) {
-  return Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
-}
 
 function AccountCard({
   account,
@@ -44,7 +40,7 @@ function AccountCard({
   const [copied, setCopied] = useState<string | null>(null)
   const revoked = account.status === 'revoked'
   const active = !revoked && account.status === 'active' && account.expiresAt > new Date()
-  const remaining = daysLeft(account.expiresAt)
+  const remaining = daysUntilExpiry(account.expiresAt, account.planType as PlanType)
 
   const copy = (label: string, value: string) => {
     navigator.clipboard.writeText(value)

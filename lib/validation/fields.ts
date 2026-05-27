@@ -49,11 +49,15 @@ export function createPasswordSchema(lang: Lang = 'vi') {
 
 export const passwordSchema = createPasswordSchema('vi')
 
-export const fullNameSchema = z
-  .string({ required_error: 'Họ tên là bắt buộc' })
-  .trim()
-  .min(1, 'Họ tên là bắt buộc')
-  .max(120, 'Họ tên quá dài')
+export function createFullNameSchema(lang: Lang = 'vi') {
+  return z
+    .string({ required_error: validationMsg(lang, 'fullNameRequired') })
+    .trim()
+    .min(1, validationMsg(lang, 'fullNameRequired'))
+    .max(120, validationMsg(lang, 'fullNameTooLong'))
+}
+
+export const fullNameSchema = createFullNameSchema('vi')
 
 export const phoneSchema = z
   .string()

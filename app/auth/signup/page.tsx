@@ -10,8 +10,9 @@ import { t } from '@/lib/translations'
 import { motion } from 'framer-motion'
 import { Eye, EyeOff, Mail, Lock, User as UserIcon, CheckCircle } from 'lucide-react'
 import { GoogleSignInButton } from '@/components/auth/google-sign-in-button'
+import { AuthLanguageSwitch } from '@/components/auth/auth-language-switch'
 import { validateClient } from '@/lib/validation/client'
-import { signupFormSchema } from '@/lib/validation/auth'
+import { createSignupFormSchema } from '@/lib/validation/auth'
 
 function SignupPageContent() {
   const router = useRouter()
@@ -24,7 +25,18 @@ function SignupPageContent() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
+
+  const passwordStrength = React.useMemo(() => {
+    if (!password) return 0
+    let strength = 0
+    if (password.length >= 6) strength++
+    if (password.match(/[a-z]/) && password.match(/[A-Z]/)) strength++
+    if (password.match(/[0-9]/)) strength++
+    if (password.match(/[^a-zA-Z0-9]/)) strength++
+    return strength
+  }, [password])
 
   if (!shouldShowAuthForm) {
     return null
@@ -33,13 +45,15 @@ function SignupPageContent() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setFieldErrors({})
 
     const valid = validateClient(
-      signupFormSchema,
+      createSignupFormSchema(language),
       { email, password, fullName, confirmPassword, language },
       language,
     )
     if (!valid.success) {
+      setFieldErrors(valid.fieldErrors)
       setError(valid.error)
       return
     }
@@ -55,7 +69,12 @@ function SignupPageContent() {
         body: JSON.stringify(payload),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || t('common.error', language))
+      if (!res.ok) {
+        if (res.status === 400 && data.fields) {
+          setFieldErrors(data.fields as Record<string, string>)
+        }
+        throw new Error(data.error || t('common.error', language))
+      }
 
       const newUser: User = {
         id: data.user.id,
@@ -63,10 +82,10 @@ function SignupPageContent() {
         password: '',
         fullName: data.user.fullName,
         role: 'customer',
-        language,
+        language: data.user.language ?? language,
         createdAt: new Date(),
         updatedAt: new Date(),
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${fullName}`,
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(fullName)}`,
       }
 
       setCurrentUser(newUser)
@@ -80,19 +99,13 @@ function SignupPageContent() {
     }
   }
 
-  const passwordStrength = React.useMemo(() => {
-    if (!password) return 0
-    let strength = 0
-    if (password.length >= 6) strength++
-    if (password.match(/[a-z]/) && password.match(/[A-Z]/)) strength++
-    if (password.match(/[0-9]/)) strength++
-    if (password.match(/[^a-zA-Z0-9]/)) strength++
-    return strength
-  }, [password])
+  const fieldClass = (key: string) =>
+    `w-full bg-black/30 border text-white pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:border-netflix-red transition-colors ${
+      fieldErrors[key] ? 'border-red-500/70' : 'border-white/10'
+    }`
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-netflix-black via-netflix-dark to-netflix-black px-4">
-      {/* Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-netflix-red/10 rounded-full blur-3xl" />
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-green-500/10 rounded-full blur-3xl" />
@@ -105,14 +118,15 @@ function SignupPageContent() {
         className="relative w-full max-w-md"
       >
         <div className="glass-dark rounded-2xl p-8 border border-white/10">
-          {/* Logo */}
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-netflix-red mb-2">N</h1>
-            <h2 className="text-2xl font-bold text-white">NetflixHub</h2>
-            <p className="text-gray-400 text-sm mt-2">{t('nav.signUp', language)}</p>
+          <div className="flex items-start justify-between gap-4 mb-8">
+            <div className="text-center flex-1">
+              <h1 className="text-4xl font-bold text-netflix-red mb-2">N</h1>
+              <h2 className="text-2xl font-bold text-white">NetflixHub</h2>
+              <p className="text-gray-400 text-sm mt-2">{t('nav.signUp', language)}</p>
+            </div>
+            <AuthLanguageSwitch className="shrink-0" />
           </div>
 
-          {/* Error Message */}
           {error && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
@@ -134,51 +148,49 @@ function SignupPageContent() {
             </div>
           </div>
 
-          <form onSubmit={handleSignup} className="space-y-4 mb-6">
-            {/* Full Name */}
+          <form onSubmit={handleSignup} noValidate className="space-y-4 mb-6">
             <div>
-              <label className="block text-white text-sm font-medium mb-2">Full Name</label>
+              <label className="block text-white text-sm font-medium mb-2">{t('auth.fullName', language)}</label>
               <div className="relative">
                 <UserIcon className="absolute left-3 top-3 text-gray-400" size={18} />
                 <input
                   type="text"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder="John Doe"
-                  className="w-full bg-black/30 border border-white/10 text-white pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:border-netflix-red transition-colors"
-                  required
+                  aria-invalid={Boolean(fieldErrors.fullName)}
+                  className={fieldClass('fullName')}
                 />
               </div>
+              {fieldErrors.fullName && <p className="mt-1 text-red-400 text-xs">{fieldErrors.fullName}</p>}
             </div>
 
-            {/* Email */}
             <div>
-              <label className="block text-white text-sm font-medium mb-2">Email</label>
+              <label className="block text-white text-sm font-medium mb-2">{t('auth.email', language)}</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-3 text-gray-400" size={18} />
                 <input
                   type="email"
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="john@example.com"
-                  className="w-full bg-black/30 border border-white/10 text-white pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:border-netflix-red transition-colors"
-                  required
+                  aria-invalid={Boolean(fieldErrors.email)}
+                  className={fieldClass('email')}
                 />
               </div>
+              {fieldErrors.email && <p className="mt-1 text-red-400 text-xs">{fieldErrors.email}</p>}
             </div>
 
-            {/* Password */}
             <div>
-              <label className="block text-white text-sm font-medium mb-2">Password</label>
+              <label className="block text-white text-sm font-medium mb-2">{t('auth.password', language)}</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-3 text-gray-400" size={18} />
                 <input
                   type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full bg-black/30 border border-white/10 text-white pl-10 pr-10 py-2 rounded-lg focus:outline-none focus:border-netflix-red transition-colors"
-                  required
+                  aria-invalid={Boolean(fieldErrors.password)}
+                  className={`${fieldClass('password')} pr-10`}
                 />
                 <button
                   type="button"
@@ -188,6 +200,7 @@ function SignupPageContent() {
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
+              {fieldErrors.password && <p className="mt-1 text-red-400 text-xs">{fieldErrors.password}</p>}
               {password && (
                 <div className="mt-2">
                   <div className="flex gap-1 mb-1">
@@ -211,18 +224,17 @@ function SignupPageContent() {
               )}
             </div>
 
-            {/* Confirm Password */}
             <div>
-              <label className="block text-white text-sm font-medium mb-2">Confirm Password</label>
+              <label className="block text-white text-sm font-medium mb-2">{t('auth.confirmPassword', language)}</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-3 text-gray-400" size={18} />
                 <input
                   type={showConfirmPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full bg-black/30 border border-white/10 text-white pl-10 pr-10 py-2 rounded-lg focus:outline-none focus:border-netflix-red transition-colors"
-                  required
+                  aria-invalid={Boolean(fieldErrors.confirmPassword)}
+                  className={`${fieldClass('confirmPassword')} pr-10`}
                 />
                 <button
                   type="button"
@@ -232,15 +244,17 @@ function SignupPageContent() {
                   {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-              {confirmPassword && password === confirmPassword && (
+              {fieldErrors.confirmPassword && (
+                <p className="mt-1 text-red-400 text-xs">{fieldErrors.confirmPassword}</p>
+              )}
+              {confirmPassword && password === confirmPassword && !fieldErrors.confirmPassword && (
                 <div className="mt-2 flex items-center gap-2 text-green-400 text-xs">
                   <CheckCircle size={14} />
-                  Passwords match
+                  {t('auth.passwordMatch', language)}
                 </div>
               )}
             </div>
 
-            {/* Terms */}
             <div className="flex items-start">
               <input
                 type="checkbox"
@@ -249,11 +263,17 @@ function SignupPageContent() {
                 required
               />
               <label htmlFor="terms" className="ml-2 text-gray-400 text-xs cursor-pointer">
-                I agree to the <Link href="#" className="text-netflix-red hover:underline">Terms of Service</Link> and <Link href="#" className="text-netflix-red hover:underline">Privacy Policy</Link>
+                {t('auth.termsAgree', language)}{' '}
+                <Link href="#" className="text-netflix-red hover:underline">
+                  {t('auth.terms', language)}
+                </Link>{' '}
+                {t('auth.and', language)}{' '}
+                <Link href="#" className="text-netflix-red hover:underline">
+                  {t('auth.privacy', language)}
+                </Link>
               </label>
             </div>
 
-            {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
@@ -263,9 +283,8 @@ function SignupPageContent() {
             </button>
           </form>
 
-          {/* Sign In Link */}
           <p className="text-center text-gray-400 text-sm">
-            Already have an account?{' '}
+            {t('auth.hasAccount', language)}{' '}
             <Link href="/auth/login" className="text-netflix-red hover:text-red-500 transition-colors font-semibold">
               {t('nav.signIn', language)}
             </Link>

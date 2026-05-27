@@ -35,6 +35,8 @@ export interface Product {
   nameEn?: string
   descriptionEn?: string
   image: string
+  /** Path trong bucket product-images (admin) */
+  imageStoragePath?: string
   category: string
   basePrice: number
   discountPercentage?: number

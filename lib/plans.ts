@@ -1,3 +1,5 @@
+import { differenceInCalendarDays, startOfDay } from 'date-fns'
+
 export type PlanType =
   | 'daily_1'
   | 'daily_3'
@@ -34,10 +36,18 @@ export function planMonths(plan: PlanType): number {
   return 0
 }
 
+/** Cuối ngày theo giờ địa phương — tránh lệch ngày khi hiển thị / đếm */
+export function endOfLocalDay(date: Date): Date {
+  const end = new Date(date)
+  end.setHours(23, 59, 59, 999)
+  return end
+}
+
 /**
  * Ngày hết hạn:
  * - Ngắn hạn: +N ngày lịch
  * - Dài hạn: cùng ngày trong tháng sau (+1/3/12 tháng), VD mua 28/04 → hết 28/05
+ * Luôn lưu 23:59:59.999 ngày hết hạn (giờ local).
  */
 export function addPlanExpiry(from: Date, plan: PlanType): Date {
   const end = new Date(from)
@@ -46,7 +56,24 @@ export function addPlanExpiry(from: Date, plan: PlanType): Date {
   } else {
     end.setMonth(end.getMonth() + planMonths(plan))
   }
-  return end
+  return endOfLocalDay(end)
+}
+
+/**
+ * Số ngày còn lại (theo ngày lịch, không dùng ceil ms).
+ * Gói tháng+: mua 26/05 → hết 26/06 hiển thị ~30 ngày (không phải 31).
+ */
+export function daysUntilExpiry(
+  expiresAt: Date,
+  plan: PlanType,
+  now: Date = new Date(),
+): number {
+  const diff = differenceInCalendarDays(startOfDay(expiresAt), startOfDay(now))
+  if (diff <= 0) return 0
+  if (!isShortTermPlan(plan) && diff > 1) {
+    return diff - 1
+  }
+  return diff
 }
 
 export function formatPlanExpiry(date: Date, lang: 'vi' | 'en'): string {

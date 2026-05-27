@@ -37,8 +37,9 @@ export function ProductCard({ product, language = 'vi' }: ProductCardProps) {
         <div className="relative h-48 overflow-hidden bg-gradient-to-br from-netflix-dark to-black">
           <img
             src={product.image}
-            alt={product.name}
+            alt={localized.name}
             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+            loading="lazy"
           />
           {product.comingSoon && (
             <div className="absolute top-3 left-3 bg-amber-500/90 text-black px-3 py-1 rounded-full text-xs font-bold uppercase">

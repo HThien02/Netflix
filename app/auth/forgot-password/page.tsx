@@ -32,12 +32,22 @@ export default function ForgotPasswordPage() {
       const res = await fetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
         body: JSON.stringify(valid.data),
       })
-      if (!res.ok) throw new Error('Failed')
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === 'string'
+            ? data.error
+            : language === 'vi'
+              ? 'Không gửi được email'
+              : 'Could not send email',
+        )
+      }
       setSent(true)
-    } catch {
-      setError(language === 'vi' ? 'Không gửi được email' : 'Could not send email')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('common.error', language))
     } finally {
       setLoading(false)
     }

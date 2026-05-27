@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAdminUser } from '@/lib/admin/verify-admin'
 import { isSupabaseConfigured } from '@/lib/auth/login'
+import { removeProductImageFromStorage } from '@/lib/products/image-storage'
 import { mapDbProductToApp, productToDbPayload } from '@/lib/products/map'
 import { adminProductBodySchema } from '@/lib/validation/admin'
 import { parseJsonBody } from '@/lib/validation/parse'
@@ -66,8 +67,17 @@ export async function DELETE(
       )
     }
 
+    const { data: productRow } = await supabase
+      .from('products')
+      .select('image_storage_path')
+      .eq('id', id)
+      .maybeSingle()
+
     const { error } = await supabase.from('products').delete().eq('id', id)
     if (error) throw error
+
+    await removeProductImageFromStorage(productRow?.image_storage_path)
+
     return NextResponse.json({ ok: true })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Error'

@@ -2,11 +2,13 @@
 
 import React, { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { AdminShell, adminHeaders } from '@/components/admin/admin-shell'
+import { ProductImageField } from '@/components/admin/product-image-field'
 import { useApp } from '@/lib/context'
 import { t } from '@/lib/translations'
 import { formatCurrency } from '@/lib/utils/format'
-import { Plus, Save, Trash2, Pencil, ExternalLink } from 'lucide-react'
+import { Save, Trash2, Pencil, ExternalLink } from 'lucide-react'
 
 type AdminProduct = {
   id: string
@@ -18,6 +20,7 @@ type AdminProduct = {
   discountPercentage?: number
   category: string
   image: string
+  imageStoragePath?: string
   active: boolean
   poolAccountCount?: number
 }
@@ -30,7 +33,6 @@ const emptyForm = {
   price: 1000,
   discount_percent: 0,
   category: 'Streaming',
-  image_url: '',
   is_active: true,
 }
 
@@ -38,10 +40,14 @@ export default function AdminProductsPage() {
   const { currentUser, language } = useApp()
   const [products, setProducts] = useState<AdminProduct[]>([])
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
   const [err, setErr] = useState('')
   const [form, setForm] = useState(emptyForm)
   const [editId, setEditId] = useState<string | null>(null)
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [removeImage, setRemoveImage] = useState(false)
 
   const load = useCallback(async () => {
     if (!currentUser) return
@@ -64,6 +70,9 @@ export default function AdminProductsPage() {
   const resetForm = () => {
     setForm(emptyForm)
     setEditId(null)
+    setImageFile(null)
+    setImagePreview(null)
+    setRemoveImage(false)
   }
 
   const startEdit = (p: AdminProduct) => {
@@ -76,27 +85,85 @@ export default function AdminProductsPage() {
       price: p.basePrice,
       discount_percent: p.discountPercentage || 0,
       category: p.category,
-      image_url: p.image,
       is_active: p.active,
     })
+    setImageFile(null)
+    setImagePreview(p.imageStoragePath ? p.image : null)
+    setRemoveImage(false)
+  }
+
+  const uploadImage = async (productId: string) => {
+    if (!currentUser || !imageFile) return true
+    const fd = new FormData()
+    fd.append('file', imageFile)
+    const res = await fetch(`/api/admin/products/${productId}/image`, {
+      method: 'POST',
+      headers: adminHeaders(currentUser.id),
+      body: fd,
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      setErr(data.error || 'Upload failed')
+      return false
+    }
+    return true
+  }
+
+  const deleteImage = async (productId: string) => {
+    if (!currentUser) return true
+    const res = await fetch(
+      `/api/admin/products/${productId}/image?adminUserId=${encodeURIComponent(currentUser.id)}`,
+      {
+        method: 'DELETE',
+        headers: adminHeaders(currentUser.id),
+      },
+    )
+    const data = await res.json()
+    if (!res.ok) {
+      setErr(data.error || 'Error')
+      return false
+    }
+    return true
   }
 
   const save = async () => {
     if (!currentUser || !form.name.trim()) return
     setErr('')
-    const body = { adminUserId: currentUser.id, ...form, basePrice: form.price }
-    const url = editId ? `/api/admin/products/${editId}` : '/api/admin/products'
-    const res = await fetch(url, {
-      method: editId ? 'PATCH' : 'POST',
-      headers: adminHeaders(currentUser.id),
-      body: JSON.stringify(body),
-    })
-    const data = await res.json()
-    if (res.ok) {
+    setSaving(true)
+    try {
+      const body = { adminUserId: currentUser.id, ...form, basePrice: form.price }
+      const url = editId ? `/api/admin/products/${editId}` : '/api/admin/products'
+      const res = await fetch(url, {
+        method: editId ? 'PATCH' : 'POST',
+        headers: adminHeaders(currentUser.id),
+        body: JSON.stringify(body),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setErr(data.error || 'Error')
+        return
+      }
+
+      const productId = editId || data.product?.id
+      if (!productId) {
+        setErr('Missing product id')
+        return
+      }
+
+      if (removeImage && !imageFile) {
+        const ok = await deleteImage(productId)
+        if (!ok) return
+      } else if (imageFile) {
+        const ok = await uploadImage(productId)
+        if (!ok) return
+      }
+
       setMsg(t('admin.saved', language))
       resetForm()
       load()
-    } else setErr(data.error || 'Error')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const remove = async (id: string) => {
@@ -174,11 +241,18 @@ export default function AdminProductsPage() {
             onChange={(e) => setForm({ ...form, category: e.target.value })}
             className="bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white text-sm"
           />
-          <input
-            placeholder={t('admin.productImage', language)}
-            value={form.image_url}
-            onChange={(e) => setForm({ ...form, image_url: e.target.value })}
-            className="bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white text-sm"
+          <ProductImageField
+            language={language}
+            previewUrl={imagePreview}
+            disabled={saving}
+            onFileSelect={(file) => {
+              setImageFile(file)
+              setRemoveImage(false)
+            }}
+            onRemoveExisting={() => {
+              setImagePreview(null)
+              setRemoveImage(true)
+            }}
           />
           <label className="flex items-center gap-2 text-sm text-gray-300 md:col-span-2">
             <input
@@ -193,10 +267,11 @@ export default function AdminProductsPage() {
         <div className="flex gap-2">
           <button
             onClick={save}
-            className="bg-netflix-red hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2"
+            disabled={saving}
+            className="bg-netflix-red hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 disabled:opacity-50"
           >
             <Save size={18} />
-            {editId ? t('admin.save', language) : t('admin.add', language)}
+            {saving ? t('common.loading', language) : editId ? t('admin.save', language) : t('admin.add', language)}
           </button>
           {editId && (
             <button
@@ -220,6 +295,9 @@ export default function AdminProductsPage() {
               key={p.id}
               className="glass-dark rounded-2xl border border-white/10 p-4 flex flex-wrap items-center gap-4"
             >
+              <div className="relative w-20 h-14 rounded-lg overflow-hidden shrink-0 bg-black/40 border border-white/10">
+                <Image src={p.image} alt="" fill className="object-cover" sizes="80px" unoptimized />
+              </div>
               <div className="flex-1 min-w-[200px]">
                 <p className="text-white font-semibold">{p.name}</p>
                 <p className="text-gray-500 text-xs line-clamp-1">{p.description}</p>

@@ -36,13 +36,18 @@ export async function sendEmail(options: {
     return { ok: false, skipped: true as const }
   }
 
-  const transporter = createTransporter()
-  await transporter.sendMail({
-    from: getFromAddress(),
-    to: options.to,
-    subject: options.subject,
-    html: options.html,
-    text: options.text,
-  })
-  return { ok: true as const }
+  try {
+    const transporter = createTransporter()
+    await transporter.sendMail({
+      from: getFromAddress(),
+      to: options.to,
+      subject: options.subject,
+      html: options.html,
+      text: options.text,
+    })
+    return { ok: true as const }
+  } catch (err) {
+    console.error('[sendEmail]', err)
+    return { ok: false, failed: true as const }
+  }
 }
