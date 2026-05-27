@@ -1,4 +1,10 @@
-import { createAdminClient } from '@/lib/supabase/admin'
+import {
+  addSepayToMonthlyBuckets,
+  sepayOrderHasMatchingInvoice,
+  type RevenueInvoiceRow,
+  type SepayRevenueOrder,
+} from '@/lib/admin/revenue-merge'
+import { createAdminClient, hasSupabaseServiceRole } from '@/lib/supabase/admin'
 import { isSupabaseConfigured } from '@/lib/auth/login'
 
 export type AdminDashboardStats = {
@@ -6,6 +12,8 @@ export type AdminDashboardStats = {
   activeRentals: number
   revenueThisMonth: number
   revenueTotal: number
+  /** Doanh thu SePay (đã hoàn tất) chưa có trong invoices */
+  sepayRevenueExtra: number
   openTickets: number
   sepayPending: number
   productsActive: number
@@ -40,12 +48,75 @@ function monthKey(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
+async function fetchSepayRevenueOrders(
+  supabase: ReturnType<typeof createAdminClient>,
+  sinceIso: string,
+): Promise<SepayRevenueOrder[]> {
+  if (!hasSupabaseServiceRole()) return []
+
+  const [ordersRes, webhooksRes] = await Promise.all([
+    supabase
+      .from('sepay_pending_orders')
+      .select('payment_code, user_id, amount_vnd, created_at, status, sepay_transaction_id')
+      .eq('status', 'completed')
+      .not('sepay_transaction_id', 'is', null)
+      .gte('created_at', sinceIso),
+    supabase.from('sepay_webhook_events').select('payment_code, processed_at, transfer_amount'),
+  ])
+
+  const processedByCode = new Map<
+    string,
+    { processed_at: string; transfer_amount: number }
+  >()
+  for (const w of webhooksRes.data || []) {
+    if (w.payment_code) {
+      processedByCode.set(String(w.payment_code), {
+        processed_at: String(w.processed_at),
+        transfer_amount: Number(w.transfer_amount) || 0,
+      })
+    }
+  }
+
+  const rows = ordersRes.data || []
+  const userIds = [...new Set(rows.map((r) => String(r.user_id)))]
+  const usersById = new Map<string, { email: string | null; full_name: string | null }>()
+  if (userIds.length > 0) {
+    const { data: users } = await supabase
+      .from('users')
+      .select('id, email, full_name')
+      .in('id', userIds)
+    for (const u of users || []) {
+      usersById.set(String(u.id), {
+        email: u.email ? String(u.email) : null,
+        full_name: u.full_name ? String(u.full_name) : null,
+      })
+    }
+  }
+
+  return rows.map((row) => {
+    const code = String(row.payment_code)
+    const hook = processedByCode.get(code)
+    const amountVnd =
+      hook && hook.transfer_amount > 0 ? hook.transfer_amount : Number(row.amount_vnd) || 0
+    const userId = String(row.user_id)
+    return {
+      paymentCode: code,
+      userId,
+      amountVnd,
+      completedAt: hook?.processed_at || String(row.created_at),
+      userEmail: usersById.get(userId)?.email ?? null,
+      userName: usersById.get(userId)?.full_name ?? null,
+    }
+  })
+}
+
 export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
   const empty: AdminDashboardStats = {
     customers: 0,
     activeRentals: 0,
     revenueThisMonth: 0,
     revenueTotal: 0,
+    sepayRevenueExtra: 0,
     openTickets: 0,
     sepayPending: 0,
     productsActive: 0,
@@ -72,6 +143,7 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
     invoicesRes,
     recentInvoicesRes,
     recentTicketsRes,
+    sepayRevenueRes,
   ] = await Promise.all([
     supabase.from('users').select('id, role'),
     supabase
@@ -94,7 +166,7 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
       .eq('status', 'pending'),
     supabase
       .from('invoices')
-      .select('final_amount, status, created_at')
+      .select('final_amount, status, created_at, user_id, payment_method')
       .gte('created_at', sixMonthsAgo),
     supabase
       .from('invoices')
@@ -109,6 +181,7 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
       .in('status', ['open', 'in_progress'])
       .order('created_at', { ascending: false })
       .limit(6),
+    fetchSepayRevenueOrders(supabase, sixMonthsAgo),
   ])
 
   const customers = (usersRes.data || []).filter((u) => u.role === 'customer').length
@@ -123,8 +196,18 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
   }
 
   const completedStatuses = new Set(['completed', 'paid'])
+  const invoiceRows: RevenueInvoiceRow[] = (invoicesRes.data || []).map((inv) => ({
+    final_amount: inv.final_amount,
+    status: String(inv.status),
+    created_at: String(inv.created_at),
+    user_id: inv.user_id ? String(inv.user_id) : undefined,
+    payment_method: inv.payment_method ? String(inv.payment_method) : null,
+  }))
+
+  const sepayOrders = sepayRevenueRes
   let revenueThisMonth = 0
   let revenueTotal = 0
+  let sepayRevenueExtra = 0
   const byMonth = new Map<string, { revenue: number; orders: number }>()
 
   for (let i = 5; i >= 0; i--) {
@@ -132,7 +215,7 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
     byMonth.set(monthKey(d), { revenue: 0, orders: 0 })
   }
 
-  for (const inv of invoicesRes.data || []) {
+  for (const inv of invoiceRows) {
     const amount = Number(inv.final_amount) || 0
     const created = new Date(String(inv.created_at))
     const key = monthKey(created)
@@ -149,6 +232,17 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
     }
   }
 
+  for (const order of sepayOrders) {
+    if (sepayOrderHasMatchingInvoice(order, invoiceRows)) continue
+    sepayRevenueExtra += order.amountVnd
+    const completed = new Date(order.completedAt)
+    revenueTotal += order.amountVnd
+    if (completed >= startOfMonth(now)) {
+      revenueThisMonth += order.amountVnd
+    }
+  }
+  addSepayToMonthlyBuckets(sepayOrders, invoiceRows, byMonth, monthKey)
+
   const monthlyRevenue = Array.from(byMonth.entries()).map(([month, v]) => ({
     month,
     revenue: v.revenue,
@@ -157,7 +251,21 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
 
   type UserJoin = { email?: string; full_name?: string } | { email?: string; full_name?: string }[] | null
 
-  const recentOrders = (recentInvoicesRes.data || []).map((row) => {
+  const sepayRecentExtras = sepayOrders
+    .filter((o) => !sepayOrderHasMatchingInvoice(o, invoiceRows))
+    .slice(0, 6)
+    .map((o) => ({
+      id: `sepay-${o.paymentCode}`,
+      invoiceNumber: o.paymentCode,
+      amount: o.amountVnd,
+      status: 'completed',
+      paymentMethod: 'sepay',
+      createdAt: o.completedAt,
+      userEmail: o.userEmail ?? null,
+      userName: o.userName ?? null,
+    }))
+
+  const recentOrdersFromInvoices = (recentInvoicesRes.data || []).map((row) => {
     const u = row.users as UserJoin
     const user = Array.isArray(u) ? u[0] : u
     return {
@@ -171,6 +279,10 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
       userName: user?.full_name ? String(user.full_name) : null,
     }
   })
+
+  const recentOrders = [...recentOrdersFromInvoices, ...sepayRecentExtras]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 6)
 
   const recentTickets = (recentTicketsRes.data || []).map((row) => {
     const u = row.users as UserJoin
@@ -191,6 +303,7 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
     activeRentals,
     revenueThisMonth,
     revenueTotal,
+    sepayRevenueExtra,
     openTickets,
     sepayPending,
     productsActive,

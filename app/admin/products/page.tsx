@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { AdminShell, adminHeaders } from '@/components/admin/admin-shell'
+import { AdminShell, adminAuthHeaders, adminHeaders } from '@/components/admin/admin-shell'
 import { ProductImageField } from '@/components/admin/product-image-field'
 import { useApp } from '@/lib/context'
 import { t } from '@/lib/translations'
@@ -98,7 +98,8 @@ export default function AdminProductsPage() {
     fd.append('file', imageFile)
     const res = await fetch(`/api/admin/products/${productId}/image`, {
       method: 'POST',
-      headers: adminHeaders(currentUser.id),
+      credentials: 'same-origin',
+      headers: adminAuthHeaders(currentUser.id),
       body: fd,
     })
     const data = await res.json()
@@ -135,6 +136,7 @@ export default function AdminProductsPage() {
       const url = editId ? `/api/admin/products/${editId}` : '/api/admin/products'
       const res = await fetch(url, {
         method: editId ? 'PATCH' : 'POST',
+        credentials: 'same-origin',
         headers: adminHeaders(currentUser.id),
         body: JSON.stringify(body),
       })

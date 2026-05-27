@@ -66,17 +66,26 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   )
 }
 
+/** Chỉ auth header — dùng với FormData (browser tự set multipart boundary) */
+export function adminAuthHeaders(userId: string): HeadersInit {
+  return { 'x-admin-user-id': userId }
+}
+
+/** JSON API (POST/PATCH body là application/json) */
 export function adminHeaders(userId: string): HeadersInit {
-  return { 'Content-Type': 'application/json', 'x-admin-user-id': userId }
+  return { ...adminAuthHeaders(userId), 'Content-Type': 'application/json' }
 }
 
 /** Fetch admin API kèm session cookie (bắt buộc trên production) */
 export function adminFetch(url: string, userId: string, init?: RequestInit) {
+  const isFormData =
+    typeof FormData !== 'undefined' && init?.body instanceof FormData
+  const base = isFormData ? adminAuthHeaders(userId) : adminHeaders(userId)
   return fetch(url, {
     ...init,
     credentials: 'same-origin',
     headers: {
-      ...adminHeaders(userId),
+      ...base,
       ...(init?.headers as Record<string, string> | undefined),
     },
   })

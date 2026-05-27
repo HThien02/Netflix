@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react'
 import type { Product } from '@/lib/types'
-import { AdminShell, adminHeaders } from '@/components/admin/admin-shell'
+import { AdminShell, adminFetch, adminHeaders } from '@/components/admin/admin-shell'
 import { useApp } from '@/lib/context'
 import { t } from '@/lib/translations'
 import { planLabel } from '@/lib/plans'
@@ -54,6 +54,8 @@ export default function AdminRentalsPage() {
   const [banReasonId, setBanReasonId] = useState('')
   const [banNote, setBanNote] = useState('')
   const [msg, setMsg] = useState('')
+  const [err, setErr] = useState('')
+  const [includeExpired, setIncludeExpired] = useState(false)
   const [catalog, setCatalog] = useState<Product[]>([])
   const [filterProductId, setFilterProductId] = useState('')
 
@@ -65,25 +67,36 @@ export default function AdminRentalsPage() {
   const load = useCallback(async () => {
     if (!currentUser) return
     setLoading(true)
+    setErr('')
     try {
-      const rentalsUrl = filterProductId
-        ? `/api/admin/rentals?productId=${filterProductId}`
-        : '/api/admin/rentals'
+      const params = new URLSearchParams()
+      if (filterProductId) params.set('productId', filterProductId)
+      if (includeExpired) params.set('includeExpired', '1')
+      const rentalsUrl = `/api/admin/rentals${params.toString() ? `?${params}` : ''}`
+
       const [rRes, bRes, pRes] = await Promise.all([
-        fetch(rentalsUrl, { headers: adminHeaders(currentUser.id) }),
-        fetch('/api/admin/ban-reasons', { headers: adminHeaders(currentUser.id) }),
-        fetch('/api/admin/products', { headers: adminHeaders(currentUser.id) }),
+        adminFetch(rentalsUrl, currentUser.id),
+        adminFetch('/api/admin/ban-reasons', currentUser.id),
+        adminFetch('/api/admin/products', currentUser.id),
       ])
       const rData = await rRes.json()
       const bData = await bRes.json()
       const pData = await pRes.json()
-      if (rRes.ok) setRentals(rData.rentals || [])
+      if (rRes.ok) {
+        setRentals(rData.rentals || [])
+      } else {
+        setRentals([])
+        setErr(rData.error || t('common.error', language))
+      }
       if (bRes.ok) setReasons((bData.reasons || []).filter((x: BanReason) => x.is_active))
       if (pRes.ok) setCatalog(pData.products || [])
+    } catch {
+      setRentals([])
+      setErr(t('common.error', language))
     } finally {
       setLoading(false)
     }
-  }, [currentUser, filterProductId])
+  }, [currentUser, filterProductId, includeExpired, language])
 
   useEffect(() => {
     load()
@@ -111,7 +124,7 @@ export default function AdminRentalsPage() {
 
   const confirmBan = async () => {
     if (!currentUser || !banTarget || !banReasonId) return
-    const res = await fetch(`/api/admin/rentals/${banTarget.id}/ban`, {
+    const res = await adminFetch(`/api/admin/rentals/${banTarget.id}/ban`, currentUser.id, {
       method: 'POST',
       headers: adminHeaders(currentUser.id),
       body: JSON.stringify({
@@ -134,6 +147,7 @@ export default function AdminRentalsPage() {
       <h1 className="text-3xl font-bold text-white mb-2">{t('admin.rentals', language)}</h1>
       <p className="text-gray-400 mb-6">{t('admin.rentalsDesc', language)}</p>
       {msg && <p className="text-amber-400 text-sm mb-4">{msg}</p>}
+      {err && <p className="text-red-400 text-sm mb-4">{err}</p>}
 
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <label className="text-sm text-gray-400">{t('admin.filterByProduct', language)}</label>
@@ -149,6 +163,15 @@ export default function AdminRentalsPage() {
             </option>
           ))}
         </select>
+        <label className="flex items-center gap-2 text-sm text-gray-400 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={includeExpired}
+            onChange={(e) => setIncludeExpired(e.target.checked)}
+            className="rounded"
+          />
+          {t('admin.includeExpiredRentals', language)}
+        </label>
       </div>
 
       {loading ? (
@@ -172,8 +195,7 @@ export default function AdminRentalsPage() {
             <tbody>
               {rentals.map((r) => {
                 const u = userOf(r)
-                const prod = Array.isArray(r.products) ? r.products[0] : r.products
-                const productLabel = prod?.name || r.product_name
+                const productLabel = r.product_name
                 return (
                   <tr key={r.id} className="border-b border-white/5 text-gray-300">
                     <td className="p-4">

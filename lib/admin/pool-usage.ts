@@ -39,18 +39,18 @@ function parseAssignments(raw: unknown): SlotDetail[] {
   }))
 }
 
+/** Không embed products — đã có product_name trên purchased_accounts */
 export async function fetchActivePoolRentals(supabase: SupabaseClient) {
   const { data, error } = await supabase
     .from('purchased_accounts')
     .select(
-      `id, pool_account_id, product_id, slot_assignments, product_name, expires_at, status,
-       users ( email, full_name ),
-       products ( id, name )`,
+      `id, pool_account_id, slot_assignments, product_name, expires_at, status,
+       users ( email, full_name )`,
     )
     .eq('status', 'active')
     .not('pool_account_id', 'is', null)
 
-  if (error) throw error
+  if (error) throw new Error(error.message)
   return (data || []) as RentalRow[]
 }
 
@@ -82,4 +82,18 @@ export function buildSlotUsageForAccount(
     }
     return { ...slot, in_use: false }
   })
+}
+
+export async function loadProductNames(
+  supabase: SupabaseClient,
+  productIds: string[],
+): Promise<Record<string, string>> {
+  const out: Record<string, string> = {}
+  if (!productIds.length) return out
+  const { data, error } = await supabase.from('products').select('id, name').in('id', productIds)
+  if (error) throw new Error(error.message)
+  for (const row of data || []) {
+    if (row.id && row.name) out[row.id] = row.name
+  }
+  return out
 }

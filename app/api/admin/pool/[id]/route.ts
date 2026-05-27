@@ -1,5 +1,17 @@
 import { NextResponse } from 'next/server'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { createAdminClient, createServiceRoleClient, hasSupabaseServiceRole } from '@/lib/supabase/admin'
+
+function supabaseAdmin() {
+  return hasSupabaseServiceRole() ? createServiceRoleClient() : createAdminClient()
+}
+
+function errorMessage(e: unknown): string {
+  if (e instanceof Error) return e.message
+  if (typeof e === 'object' && e !== null && 'message' in e) {
+    return String((e as { message: unknown }).message)
+  }
+  return 'Error'
+}
 import { requireAdminUser } from '@/lib/admin/verify-admin'
 import { isSupabaseConfigured } from '@/lib/auth/login'
 
@@ -25,17 +37,17 @@ export async function PATCH(
     if (body.notes != null) updates.notes = body.notes
     if (body.product_id !== undefined) updates.product_id = body.product_id
 
-    const supabase = createAdminClient()
+    const supabase = supabaseAdmin()
     const { data, error } = await supabase
       .from('streaming_account_pool')
       .update(updates)
       .eq('id', id)
       .select('*')
       .single()
-    if (error) throw error
+    if (error) throw new Error(error.message)
     return NextResponse.json({ account: data })
   } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Error'
+    const msg = errorMessage(e)
     const status = msg === 'Unauthorized' || msg === 'Forbidden' ? 403 : 500
     return NextResponse.json({ error: msg }, { status })
   }
@@ -53,12 +65,12 @@ export async function DELETE(
     if (!isSupabaseConfigured()) {
       return NextResponse.json({ error: 'Supabase required' }, { status: 400 })
     }
-    const supabase = createAdminClient()
+    const supabase = supabaseAdmin()
     const { error } = await supabase.from('streaming_account_pool').delete().eq('id', id)
-    if (error) throw error
+    if (error) throw new Error(error.message)
     return NextResponse.json({ ok: true })
   } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Error'
+    const msg = errorMessage(e)
     const status = msg === 'Unauthorized' || msg === 'Forbidden' ? 403 : 500
     return NextResponse.json({ error: msg }, { status })
   }

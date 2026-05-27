@@ -37,6 +37,7 @@ type DashboardStats = {
   activeRentals: number
   revenueThisMonth: number
   revenueTotal: number
+  sepayRevenueExtra: number
   openTickets: number
   sepayPending: number
   productsActive: number
@@ -160,10 +161,20 @@ export default function AdminDashboardPage() {
               icon={<DollarSign className="text-netflix-red" size={22} />}
               label={t('admin.statRevenueMonth', language)}
               value={formatCurrency(stats.revenueThisMonth)}
-              sub={t('admin.statRevenueTotal', language).replace(
-                '{amount}',
-                formatCurrency(stats.revenueTotal),
-              )}
+              sub={
+                stats.sepayRevenueExtra > 0
+                  ? `${t('admin.statRevenueTotal', language).replace(
+                      '{amount}',
+                      formatCurrency(stats.revenueTotal),
+                    )} · ${t('admin.statRevenueSepayExtra', language).replace(
+                      '{amount}',
+                      formatCurrency(stats.sepayRevenueExtra),
+                    )}`
+                  : t('admin.statRevenueTotal', language).replace(
+                      '{amount}',
+                      formatCurrency(stats.revenueTotal),
+                    )
+              }
             />
             <StatCard
               icon={<MessageSquare className="text-amber-400" size={22} />}

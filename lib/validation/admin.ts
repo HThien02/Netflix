@@ -55,6 +55,17 @@ export const adminRentalBanSchema = z.object({
   adminNote: z.string().trim().max(1000).optional().nullable(),
 })
 
+export const adminPoolBanSchema = adminRentalBanSchema.extend({
+  rentalId: uuidSchema.optional(),
+  disablePool: z.boolean().optional(),
+})
+
+export const adminPoolQuerySchema = z.object({
+  q: z.string().trim().max(120).optional(),
+  productId: productIdSchema.optional(),
+  status: z.enum(['active', 'full', 'disabled']).optional(),
+})
+
 export const adminRentalsQuerySchema = z.object({
   status: z.enum(['active', 'expired', 'revoked', 'all']).optional().default('active'),
   productId: productIdSchema.optional(),
