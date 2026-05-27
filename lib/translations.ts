@@ -369,6 +369,8 @@ export const translations = {
       "Active rentals: pool account, profiles in use, and assigned customer.",
     "admin.banReasons": "Ban reasons",
     "admin.banReasonsDesc": "CRUD reasons shown when banning a rental.",
+    "admin.banReasonsCatalogHint":
+      "Standard Netflix violation codes (acct_*, prof_*, share_*, …). Run migration on Supabase if the list is empty.",
     "admin.accessDenied": "Admin access required.",
     "admin.addAccount": "Add pool account",
     "admin.add": "Add",
@@ -886,7 +888,9 @@ export const translations = {
     "admin.rentalsDesc":
       "Đơn đang thuê: account pool, profile đang dùng và khách được gán.",
     "admin.banReasons": "Lý do ban",
-    "admin.banReasonsDesc": "CRUD lý do khi ban tài khoản đang thuê.",
+    "admin.banReasonsDesc": "Quản lý mã lý do khi admin cấm gói thuê của khách.",
+    "admin.banReasonsCatalogHint":
+      "Danh mục mã vi phạm Netflix chuẩn (acct_*, prof_*, share_*, …). Chạy migration trên Supabase nếu danh sách trống.",
     "admin.accessDenied": "Cần tài khoản admin.",
     "admin.addAccount": "Thêm account pool",
     "admin.add": "Thêm",

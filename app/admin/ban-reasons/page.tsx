@@ -5,6 +5,7 @@ import { AdminShell, adminHeaders } from '@/components/admin/admin-shell'
 import { useApp } from '@/lib/context'
 import { t } from '@/lib/translations'
 import { Plus, Save, Trash2 } from 'lucide-react'
+import { groupBanReasonsByCategory } from '@/lib/ban-reasons/violations-catalog'
 
 type Reason = {
   id: string
@@ -83,7 +84,8 @@ export default function AdminBanReasonsPage() {
   return (
     <AdminShell>
       <h1 className="text-3xl font-bold text-white mb-2">{t('admin.banReasons', language)}</h1>
-      <p className="text-gray-400 mb-6">{t('admin.banReasonsDesc', language)}</p>
+      <p className="text-gray-400 mb-2">{t('admin.banReasonsDesc', language)}</p>
+      <p className="text-gray-500 text-xs mb-6">{t('admin.banReasonsCatalogHint', language)}</p>
 
       <div className="glass-dark rounded-2xl p-6 border border-white/10 mb-8">
         <h2 className="text-lg font-bold text-white mb-4">{t('admin.addReason', language)}</h2>
@@ -118,8 +120,12 @@ export default function AdminBanReasonsPage() {
       {loading ? (
         <p className="text-gray-400">{t('common.loading', language)}</p>
       ) : (
-        <div className="space-y-4">
-          {reasons.map((r) => (
+        <div className="space-y-8">
+          {groupBanReasonsByCategory(reasons, language).map((group) => (
+            <section key={group.label}>
+              <h2 className="text-sm font-semibold text-netflix-red mb-3">{group.label}</h2>
+              <div className="space-y-3">
+                {group.reasons.map((r) => (
             <div key={r.id} className="glass-dark rounded-xl p-4 border border-white/10 grid gap-2">
               <div className="flex flex-wrap gap-2 items-center">
                 <input
@@ -167,6 +173,9 @@ export default function AdminBanReasonsPage() {
                 placeholder="EN desc"
               />
             </div>
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       )}

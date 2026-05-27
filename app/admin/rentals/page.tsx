@@ -9,6 +9,7 @@ import { planLabel } from '@/lib/plans'
 import type { PlanType } from '@/lib/plans'
 import { Ban } from 'lucide-react'
 import { formatDate } from '@/lib/utils/format'
+import { groupBanReasonsByCategory } from '@/lib/ban-reasons/violations-catalog'
 
 type SlotAssignment = { slot_number: number; profile_name: string; pin?: string }
 
@@ -102,6 +103,11 @@ export default function AdminRentalsPage() {
     }
     return r.slots_count > 0 ? `${r.slots_count} slot` : '—'
   }
+
+  const groupedReasons = groupBanReasonsByCategory(
+    reasons.filter((r) => r.is_active),
+    language,
+  )
 
   const confirmBan = async () => {
     if (!currentUser || !banTarget || !banReasonId) return
@@ -225,12 +231,16 @@ export default function AdminRentalsPage() {
             <select
               value={banReasonId}
               onChange={(e) => setBanReasonId(e.target.value)}
-              className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white mb-3"
+              className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white mb-3 max-h-64"
             >
-              {reasons.map((reason) => (
-                <option key={reason.id} value={reason.id}>
-                  {language === 'vi' ? reason.title_vi : reason.title_en}
-                </option>
+              {groupedReasons.map((group) => (
+                <optgroup key={group.label} label={group.label}>
+                  {group.reasons.map((reason) => (
+                    <option key={reason.id} value={reason.id}>
+                      [{reason.code}] {language === 'vi' ? reason.title_vi : reason.title_en}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
             <label className="block text-xs text-gray-400 mb-1">{t('admin.banNote', language)}</label>

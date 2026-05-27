@@ -1,23 +1,51 @@
 import { NextResponse } from 'next/server'
-import { authenticateUser } from '@/lib/auth/session'
 import { signSession, setSessionOnResponse } from '@/lib/auth/session-cookie'
 import { guardApiRequest } from '@/lib/security/request-guard'
-import { loginBodySchema } from '@/lib/validation/auth'
-import { parseJsonBody } from '@/lib/validation/parse'
+import { createLoginBodySchema } from '@/lib/validation/auth'
+import { validationErrorResponse } from '@/lib/validation/parse'
+import { validationMsg } from '@/lib/validation/messages'
+import type { Lang } from '@/lib/translations'
+import { withConstantLoginTiming } from '@/lib/auth/login-timing'
+import { authenticateLoginSafe } from '@/lib/auth/authenticate-login'
+
+function parseLang(raw: unknown): Lang {
+  return raw === 'en' ? 'en' : 'vi'
+}
 
 export async function POST(request: Request) {
   const denied = await guardApiRequest(request, { skipOriginCheck: false })
   if (denied) return denied
 
-  const parsed = await parseJsonBody(request, loginBodySchema)
-  if (!parsed.ok) return parsed.response
+  let raw: unknown
+  try {
+    raw = await request.json()
+  } catch {
+    return NextResponse.json({ error: validationMsg('vi', 'invalidJson') }, { status: 400 })
+  }
+
+  const lang = parseLang(
+    typeof raw === 'object' && raw !== null && 'language' in raw
+      ? (raw as { language?: string }).language
+      : undefined,
+  )
+
+  const parsed = createLoginBodySchema(lang).safeParse(raw)
+  if (!parsed.success) {
+    return validationErrorResponse(parsed.error, lang)
+  }
 
   try {
     const { email, password } = parsed.data
 
-    const { user, source } = await authenticateUser(email, password)
+    const { user, source } = await withConstantLoginTiming(() =>
+      authenticateLoginSafe(email, password),
+    )
+
     if (!user || !source) {
-      return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
+      return NextResponse.json(
+        { error: validationMsg(lang, 'invalidLogin') },
+        { status: 401 },
+      )
     }
 
     const token = signSession({
@@ -40,6 +68,6 @@ export async function POST(request: Request) {
 
     return setSessionOnResponse(res, token)
   } catch {
-    return NextResponse.json({ error: 'Server error' }, { status: 500 })
+    return NextResponse.json({ error: validationMsg(lang, 'serverError') }, { status: 500 })
   }
 }

@@ -10,7 +10,17 @@ export function getSiteUrl(): string {
     raw = `https://${process.env.VERCEL_URL}`
   }
   if (!raw) raw = DEFAULT_SITE_URL
-  return String(raw).replace(/\/$/, '')
+  let url = String(raw).replace(/\/$/, '')
+  try {
+    const parsed = new URL(url)
+    if (parsed.hostname === 'netflixhub.com.vn') {
+      parsed.hostname = SITE_DOMAIN
+      url = parsed.origin
+    }
+  } catch {
+    /* giữ nguyên */
+  }
+  return url
 }
 
 export function getSiteOrigin(): URL {

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { ZodError, ZodSchema } from 'zod'
 import type { Lang } from '@/lib/translations'
+import { validationMsg } from '@/lib/validation/messages'
 
 export function zodFieldErrors(error: ZodError): Record<string, string> {
   const out: Record<string, string> = {}
@@ -11,8 +12,8 @@ export function zodFieldErrors(error: ZodError): Record<string, string> {
   return out
 }
 
-export function formatZodError(error: ZodError, _lang: Lang = 'vi'): string {
-  return error.issues[0]?.message || 'Dữ liệu không hợp lệ'
+export function formatZodError(error: ZodError, lang: Lang = 'vi'): string {
+  return error.issues[0]?.message || validationMsg(lang, 'invalidJson')
 }
 
 export function validationErrorResponse(error: ZodError, lang: Lang = 'vi') {
@@ -37,7 +38,7 @@ export async function parseJsonBody<T>(
     return {
       ok: false,
       response: NextResponse.json(
-        { error: lang === 'vi' ? 'JSON không hợp lệ' : 'Invalid JSON body' },
+        { error: validationMsg(lang, 'invalidJson') },
         { status: 400 },
       ),
     }

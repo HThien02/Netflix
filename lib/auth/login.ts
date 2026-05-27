@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs'
 import { createClient } from '@/lib/supabase/client'
+import { DUMMY_PASSWORD_HASH } from '@/lib/auth/login-timing'
 import type { User } from '@/lib/types'
 
 export interface DbUser {
@@ -58,7 +59,8 @@ export async function loginWithSupabase(
   }
 
   if (!data || data.is_active === false) {
-    return { user: null, error: 'Invalid email or password' }
+    await bcrypt.compare(password, DUMMY_PASSWORD_HASH)
+    return { user: null }
   }
 
   const valid =
@@ -66,7 +68,7 @@ export async function loginWithSupabase(
     (await bcrypt.compare(password, data.password_hash))
 
   if (!valid) {
-    return { user: null, error: 'Invalid email or password' }
+    return { user: null }
   }
 
   return { user: mapDbUserToAppUser(data as DbUser) }

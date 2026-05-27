@@ -13,8 +13,9 @@ import { loadUserData } from '@/lib/user-data'
 import type { User } from '@/lib/types'
 import { BrandLogo } from '@/components/brand-logo'
 import { GoogleSignInButton } from '@/components/auth/google-sign-in-button'
+import { AuthLanguageSwitch } from '@/components/auth/auth-language-switch'
 import { validateClient } from '@/lib/validation/client'
-import { loginBodySchema } from '@/lib/validation/auth'
+import { createLoginBodySchema } from '@/lib/validation/auth'
 
 function LoginPageContent() {
   const router = useRouter()
@@ -32,6 +33,7 @@ function LoginPageContent() {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
@@ -68,9 +70,15 @@ function LoginPageContent() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setFieldErrors({})
 
-    const valid = validateClient(loginBodySchema, { email, password }, language)
+    const valid = validateClient(
+      createLoginBodySchema(language),
+      { email, password, language },
+      language,
+    )
     if (!valid.success) {
+      setFieldErrors(valid.fieldErrors)
       setError(valid.error)
       return
     }
@@ -97,6 +105,9 @@ function LoginPageContent() {
           createdAt: new Date(),
           updatedAt: new Date(),
         })
+      } else if (res.status === 400 && data.fields) {
+        setFieldErrors(data.fields as Record<string, string>)
+        setError(data.error || t('auth.loginError', language))
       } else {
         setError(data.error || t('auth.invalidLogin', language))
       }
@@ -144,9 +155,12 @@ function LoginPageContent() {
             </div>
 
             <div className="rounded-2xl p-8 border border-white/15 bg-black/50 backdrop-blur-xl">
-              <div className="mb-8">
-                <h2 className="text-2xl font-bold text-white">{t('nav.signIn', language)}</h2>
-                <p className="text-gray-400 text-sm mt-1">{t('auth.welcomeBack', language)}</p>
+              <div className="mb-8 flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl font-bold text-white">{t('nav.signIn', language)}</h2>
+                  <p className="text-gray-400 text-sm mt-1">{t('auth.welcomeBack', language)}</p>
+                </div>
+                <AuthLanguageSwitch />
               </div>
 
               {switchAccount && (
@@ -172,19 +186,34 @@ function LoginPageContent() {
                 </div>
               </div>
 
-              <form onSubmit={handleLogin} className="space-y-5">
+              <form onSubmit={handleLogin} noValidate className="space-y-5">
                 <div>
                   <label className="block text-white text-sm font-medium mb-2">{t('auth.email', language)}</label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-3 text-gray-500" size={18} />
                     <input
                       type="email"
+                      autoComplete="email"
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 text-white pl-10 py-3 rounded-xl focus:border-netflix-red focus:outline-none"
-                      required
+                      onChange={(e) => {
+                        setEmail(e.target.value)
+                        if (fieldErrors.email) {
+                          setFieldErrors((prev) => {
+                            const next = { ...prev }
+                            delete next.email
+                            return next
+                          })
+                        }
+                      }}
+                      aria-invalid={Boolean(fieldErrors.email)}
+                      className={`w-full bg-white/5 border text-white pl-10 py-3 rounded-xl focus:border-netflix-red focus:outline-none ${
+                        fieldErrors.email ? 'border-red-500/70' : 'border-white/10'
+                      }`}
                     />
                   </div>
+                  {fieldErrors.email && (
+                    <p className="mt-1.5 text-red-400 text-xs">{fieldErrors.email}</p>
+                  )}
                 </div>
 
                 <div>
@@ -198,10 +227,22 @@ function LoginPageContent() {
                     <Lock className="absolute left-3 top-3 text-gray-500" size={18} />
                     <input
                       type={showPassword ? 'text' : 'password'}
+                      autoComplete="current-password"
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 text-white pl-10 pr-10 py-3 rounded-xl focus:border-netflix-red focus:outline-none"
-                      required
+                      onChange={(e) => {
+                        setPassword(e.target.value)
+                        if (fieldErrors.password) {
+                          setFieldErrors((prev) => {
+                            const next = { ...prev }
+                            delete next.password
+                            return next
+                          })
+                        }
+                      }}
+                      aria-invalid={Boolean(fieldErrors.password)}
+                      className={`w-full bg-white/5 border text-white pl-10 pr-10 py-3 rounded-xl focus:border-netflix-red focus:outline-none ${
+                        fieldErrors.password ? 'border-red-500/70' : 'border-white/10'
+                      }`}
                     />
                     <button
                       type="button"
@@ -211,6 +252,9 @@ function LoginPageContent() {
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
+                  {fieldErrors.password && (
+                    <p className="mt-1.5 text-red-400 text-xs">{fieldErrors.password}</p>
+                  )}
                 </div>
 
                 <button

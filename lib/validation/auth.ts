@@ -1,15 +1,28 @@
 import { z } from 'zod'
+import type { Lang } from '@/lib/translations'
+import { normalizeResetToken } from '@/lib/auth/password-reset'
 import {
+  createEmailSchema,
+  createPasswordSchema,
   emailSchema,
   passwordSchema,
   fullNameSchema,
   languageSchema,
 } from '@/lib/validation/fields'
 
-export const loginBodySchema = z.object({
-  email: emailSchema,
-  password: passwordSchema,
-})
+export function createLoginBodySchema(lang: Lang = 'vi') {
+  return z.object({
+    email: createEmailSchema(lang),
+    password: createPasswordSchema(lang),
+    language: languageSchema.optional().default('vi'),
+  })
+}
+
+export const loginBodySchema = createLoginBodySchema('vi')
+
+export function createLoginFormSchema(lang: Lang = 'vi') {
+  return createLoginBodySchema(lang)
+}
 
 export const registerBodySchema = z
   .object({
@@ -24,8 +37,13 @@ export const forgotPasswordBodySchema = z.object({
   language: languageSchema.optional().default('vi'),
 })
 
+const resetTokenSchema = z.preprocess(
+  (v) => (typeof v === 'string' ? normalizeResetToken(v) : v),
+  z.string().min(32, 'Token không hợp lệ').max(128),
+)
+
 export const resetPasswordBodySchema = z.object({
-  token: z.string().trim().min(32, 'Token không hợp lệ').max(128),
+  token: resetTokenSchema,
   password: passwordSchema,
   language: languageSchema.optional().default('vi'),
 })

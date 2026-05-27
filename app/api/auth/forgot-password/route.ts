@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import crypto from 'crypto'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { createServiceRoleClient, hasSupabaseServiceRole } from '@/lib/supabase/admin'
 import { sendForgotPasswordEmail } from '@/lib/email/send'
-import { getSiteUrl } from '@/lib/site'
+import { buildPasswordResetUrl } from '@/lib/auth/password-reset'
 import { guardApiRequest } from '@/lib/security/request-guard'
 import { forgotPasswordBodySchema } from '@/lib/validation/auth'
 import { parseJsonBody } from '@/lib/validation/parse'
@@ -14,36 +14,54 @@ export async function POST(request: Request) {
   const parsed = await parseJsonBody(request, forgotPasswordBodySchema)
   if (!parsed.ok) return parsed.response
 
+  if (!hasSupabaseServiceRole()) {
+    console.error('[forgot-password] Missing SUPABASE_SERVICE_ROLE_KEY')
+    return NextResponse.json({ error: 'Server error' }, { status: 503 })
+  }
+
   try {
     const { email, language } = parsed.data
-    const normalized = email
 
-    const supabase = createAdminClient()
+    const supabase = createServiceRoleClient()
     const { data: user } = await supabase
       .from('users')
       .select('id, email, full_name, language')
-      .eq('email', normalized)
+      .eq('email', email)
       .maybeSingle()
 
     if (user) {
       const token = crypto.randomBytes(32).toString('hex')
-      const expiresAt = new Date(Date.now() + 60 * 60 * 1000)
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString()
 
-      await supabase.from('password_reset_tokens').insert({
+      await supabase
+        .from('password_reset_tokens')
+        .delete()
+        .eq('user_id', user.id)
+        .is('used_at', null)
+
+      const { error: insertError } = await supabase.from('password_reset_tokens').insert({
         user_id: user.id,
         token,
-        expires_at: expiresAt.toISOString(),
+        expires_at: expiresAt,
       })
 
-      const lang = (language === 'en' ? 'en' : user.language) as 'vi' | 'en'
-      const base = getSiteUrl()
-      const resetUrl = `${base}/auth/reset-password?token=${token}`
+      if (insertError) {
+        console.error('[forgot-password] insert token failed', insertError)
+        return NextResponse.json({ error: 'Server error' }, { status: 500 })
+      }
 
-      await sendForgotPasswordEmail(user.email, user.full_name, resetUrl, lang)
+      const lang = (language === 'en' ? 'en' : user.language) as 'vi' | 'en'
+      const resetUrl = buildPasswordResetUrl(token)
+
+      const mail = await sendForgotPasswordEmail(user.email, user.full_name, resetUrl, lang)
+      if (!mail.ok && !('skipped' in mail && mail.skipped)) {
+        console.error('[forgot-password] email send failed')
+      }
     }
 
     return NextResponse.json({ ok: true })
-  } catch {
+  } catch (err) {
+    console.error('[forgot-password]', err)
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }

@@ -1,24 +1,53 @@
 import { z } from 'zod'
+import type { Lang } from '@/lib/translations'
+import { validationMsg } from '@/lib/validation/messages'
 
 export const languageSchema = z.enum(['vi', 'en'])
 
-export const emailSchema = z
-  .string({ required_error: 'Email là bắt buộc' })
-  .trim()
-  .toLowerCase()
-  .min(5, 'Email quá ngắn')
-  .max(254, 'Email quá dài')
-  .email('Email không hợp lệ')
+const TYPO_TLDS = new Set(['con', 'cmo', 'comm', 'coom', 'cim', 'om', 'cm'])
 
-export const optionalEmailSchema = z.preprocess(
-  (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v),
-  emailSchema.optional(),
-)
+function isPlausibleEmailDomain(email: string): boolean {
+  const domain = email.split('@')[1]?.toLowerCase()
+  if (!domain) return false
+  const labels = domain.split('.')
+  if (labels.length < 2) return false
+  const tld = labels[labels.length - 1]
+  if (!/^[a-z]{2,24}$/.test(tld)) return false
+  if (TYPO_TLDS.has(tld)) return false
+  return labels.every((label) => /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label))
+}
 
-export const passwordSchema = z
-  .string({ required_error: 'Mật khẩu là bắt buộc' })
-  .min(6, 'Mật khẩu tối thiểu 6 ký tự')
-  .max(128, 'Mật khẩu quá dài')
+export function createEmailSchema(lang: Lang = 'vi') {
+  return z
+    .string({ required_error: validationMsg(lang, 'emailRequired') })
+    .trim()
+    .toLowerCase()
+    .min(5, validationMsg(lang, 'emailTooShort'))
+    .max(254, validationMsg(lang, 'emailTooLong'))
+    .email(validationMsg(lang, 'emailInvalid'))
+    .refine(isPlausibleEmailDomain, { message: validationMsg(lang, 'emailInvalid') })
+}
+
+/** Mặc định tiếng Việt — tương thích import cũ */
+export const emailSchema = createEmailSchema('vi')
+
+export function createOptionalEmailSchema(lang: Lang = 'vi') {
+  return z.preprocess(
+    (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v),
+    createEmailSchema(lang).optional(),
+  )
+}
+
+export const optionalEmailSchema = createOptionalEmailSchema('vi')
+
+export function createPasswordSchema(lang: Lang = 'vi') {
+  return z
+    .string({ required_error: validationMsg(lang, 'passwordRequired') })
+    .min(6, validationMsg(lang, 'passwordTooShort'))
+    .max(128, validationMsg(lang, 'passwordTooLong'))
+}
+
+export const passwordSchema = createPasswordSchema('vi')
 
 export const fullNameSchema = z
   .string({ required_error: 'Họ tên là bắt buộc' })
