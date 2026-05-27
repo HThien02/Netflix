@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { supportTicketUserEmbed } from '@/lib/supabase/embeds'
 import { isSupabaseConfigured } from '@/lib/auth/login'
 import type { SupportAttachmentMeta } from '@/lib/support/attachments'
 import type { SupportTicket } from '@/lib/types'
@@ -111,7 +112,7 @@ export async function listAllSupportTickets(filters?: {
   const supabase = createAdminClient()
   let query = supabase
     .from('support_tickets')
-    .select('*, users(email, full_name)')
+    .select(`*, ${supportTicketUserEmbed}(email, full_name)`)
     .order('created_at', { ascending: false })
 
   if (filters?.status && filters.status !== 'all') {
@@ -134,7 +135,7 @@ export async function getSupportTicketById(ticketId: string): Promise<SupportTic
   const supabase = createAdminClient()
   const { data, error } = await supabase
     .from('support_tickets')
-    .select('*, users(email, full_name)')
+    .select(`*, ${supportTicketUserEmbed}(email, full_name)`)
     .eq('id', ticketId)
     .maybeSingle()
 
@@ -167,7 +168,7 @@ export async function adminRespondToTicket(
     .from('support_tickets')
     .update(update)
     .eq('id', ticketId)
-    .select('*, users(email, full_name)')
+    .select(`*, ${supportTicketUserEmbed}(email, full_name)`)
     .single()
 
   if (error || !data) {

@@ -19,6 +19,7 @@ import { isProductPurchasable } from '@/lib/products/catalog'
 import { v4 as uuidv4 } from 'uuid'
 import { validateClient } from '@/lib/validation/client'
 import { cartSchema } from '@/lib/validation/cart'
+import { ChoiceGroup } from '@/components/ui/choice-group'
 
 type Props = {
   product: Product
@@ -134,90 +135,57 @@ export function ProductPurchasePanel({
     )
   }
 
+  const slotOptions = [1, 2, 3, 4].map((n) => ({
+    value: n,
+    label: String(n),
+    disabled: shortTerm || !availableSlots.includes(n),
+  }))
+
   return (
-    <div className="glass-dark-red-edge-soft rounded-2xl p-6 md:p-8 space-y-6">
-      <div>
+    <div className="glass-dark-red-edge-soft rounded-2xl p-6 md:p-8 space-y-6 relative isolate overflow-visible">
+      <div className="relative z-10 rounded-xl bg-black/30 border border-white/10 p-4 sm:p-5">
         <p className="text-gray-400 text-sm mb-1">{t('productDetail.price', language)}</p>
-        <p className="text-4xl font-bold text-white">{formatCurrency(price)}</p>
-        {product.discountPercentage && (
-          <p className="text-gray-500 text-sm line-through mt-1">
+        <p className="text-4xl sm:text-5xl font-black text-white tabular-nums tracking-tight">
+          {formatCurrency(price)}
+        </p>
+        {product.discountPercentage ? (
+          <p className="text-gray-500 text-sm line-through mt-1 tabular-nums">
             {formatCurrency(calcPriceBySlots(product.basePrice, slots, planType))}
           </p>
-        )}
+        ) : null}
         <p className="text-xs text-gray-500 mt-2">{expiryNote}</p>
       </div>
 
-      <div>
-        <p className="text-sm text-gray-400 mb-2">{t('productDetail.rentalType', language)}</p>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setRentalMode('short')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${
-              rentalMode === 'short' ? 'bg-netflix-red text-white' : 'bg-white/10 text-gray-300'
-            }`}
-          >
-            {t('marketplace.rentalShort', language)}
-          </button>
-          <button
-            type="button"
-            onClick={() => setRentalMode('long')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${
-              rentalMode === 'long' ? 'bg-netflix-red text-white' : 'bg-white/10 text-gray-300'
-            }`}
-          >
-            {t('marketplace.rentalLong', language)}
-          </button>
-        </div>
-      </div>
+      <ChoiceGroup
+        label={t('productDetail.rentalType', language)}
+        value={rentalMode}
+        onChange={setRentalMode}
+        options={[
+          { value: 'short', label: t('marketplace.rentalShort', language) },
+          { value: 'long', label: t('marketplace.rentalLong', language) },
+        ]}
+      />
 
-      <div>
-        <p className="text-sm text-gray-400 mb-2">{t('productDetail.duration', language)}</p>
-        <div className="flex flex-wrap gap-2">
-          {(rentalMode === 'short' ? SHORT_TERM_PLANS : LONG_TERM_PLANS).map((type) => (
-            <button
-              key={type}
-              type="button"
-              onClick={() => setPlanType(type)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                planType === type
-                  ? 'bg-netflix-red text-white'
-                  : 'bg-white/10 text-gray-300 hover:bg-white/20'
-              }`}
-            >
-              {planLabel(type, language)}
-            </button>
-          ))}
-        </div>
-      </div>
+      <ChoiceGroup
+        label={t('productDetail.duration', language)}
+        value={planType}
+        onChange={setPlanType}
+        columns={3}
+        options={(rentalMode === 'short' ? SHORT_TERM_PLANS : LONG_TERM_PLANS).map((type) => ({
+          value: type,
+          label: planLabel(type, language),
+        }))}
+      />
 
       <div className={shortTerm ? 'opacity-50 pointer-events-none' : ''}>
-        <p className="text-sm text-gray-400 mb-2">{t('marketplace.selectSlots', language)}</p>
-        {shortTerm && (
-          <p className="text-xs text-amber-400/90 mb-2">{t('marketplace.shortNoSlots', language)}</p>
-        )}
-        <div className="flex gap-2">
-          {[1, 2, 3, 4].map((n) => {
-            const available = !shortTerm && availableSlots.includes(n)
-            return (
-              <button
-                key={n}
-                type="button"
-                disabled={shortTerm || !available}
-                onClick={() => available && setSelectedSlots(n)}
-                className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all ${
-                  selectedSlots === n && available
-                    ? 'bg-netflix-red text-white'
-                    : available
-                      ? 'bg-white/10 text-white hover:bg-white/20'
-                      : 'bg-white/5 text-gray-600 cursor-not-allowed'
-                }`}
-              >
-                {n}
-              </button>
-            )
-          })}
-        </div>
+        <ChoiceGroup
+          label={t('marketplace.selectSlots', language)}
+          hint={shortTerm ? t('marketplace.shortNoSlots', language) : undefined}
+          value={selectedSlots}
+          onChange={setSelectedSlots}
+          columns={4}
+          options={slotOptions}
+        />
       </div>
 
       {addError && <p className="text-red-400 text-sm">{addError}</p>}
@@ -226,7 +194,7 @@ export function ProductPurchasePanel({
         type="button"
         onClick={handleAdd}
         disabled={!shortTerm && !availableSlots.includes(selectedSlots)}
-        className="w-full btn-primary-red py-4 flex items-center justify-center gap-2 disabled:opacity-40"
+        className="w-full btn-primary-red py-4 flex items-center justify-center gap-2 disabled:opacity-40 relative z-10"
       >
         <ShoppingCart size={20} />
         {t('marketplace.addToCart', language)}

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createAdminClient, createServiceRoleClient, hasSupabaseServiceRole } from '@/lib/supabase/admin'
 import { requireAdminUser } from '@/lib/admin/verify-admin'
 import { isSupabaseConfigured } from '@/lib/auth/login'
+import { purchasedAccountUserEmbed } from '@/lib/supabase/embeds'
 
 function supabaseAdmin() {
   return hasSupabaseServiceRole() ? createServiceRoleClient() : createAdminClient()
@@ -35,7 +36,7 @@ export async function GET(request: Request) {
         `id, user_id, product_id, product_name, plan_type, service_email,
          profile_name, slots_count, pool_account_id, slot_assignments,
          expires_at, status, created_at,
-         users ( id, email, full_name, language )`,
+         ${purchasedAccountUserEmbed} ( id, email, full_name, language )`,
       )
       .eq('status', status)
       .order('created_at', { ascending: false })

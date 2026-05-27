@@ -1,18 +1,26 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { AppLayout } from "@/components/app-layout";
 import { useApp } from "@/lib/context";
 import { t } from "@/lib/translations";
 import { motion } from "framer-motion";
-import { ArrowRight, Play, Zap, Users, BarChart3 } from "lucide-react";
+import { ArrowRight, Play, Zap, Users, BarChart3, Loader2 } from "lucide-react";
 import { NetflixIntroVideo } from "@/components/netflix-intro-video";
 import { formatCurrency } from "@/lib/utils/format";
+import { useProducts } from "@/lib/hooks/use-products";
+import { getCheapestPurchasablePrice } from "@/lib/products/hero-price";
 
 export default function Home() {
   const { language, isAuthenticated } = useApp();
+  const { products, loading: productsLoading } = useProducts();
+
+  const heroFromPrice = useMemo(
+    () => getCheapestPurchasablePrice(products),
+    [products],
+  );
 
   const fadeInUp = {
     initial: { opacity: 0, y: 30 },
@@ -138,14 +146,14 @@ export default function Home() {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.4, duration: 0.8 }}
             >
-              <div className="relative">
+              <div className="relative overflow-visible">
                 {/* Main Card */}
                 <motion.div
-                  className="glass-dark-red-edge rounded-3xl p-5 sm:p-8"
+                  className="glass-dark-red-edge rounded-3xl p-5 sm:p-8 overflow-visible"
                   animate={{ y: [0, 12, 0] }}
                   transition={{ duration: 4, repeat: Infinity }}
                 >
-                  <div className="space-y-4 sm:space-y-6">
+                  <div className="relative z-10 space-y-4 sm:space-y-6">
                     <NetflixIntroVideo
                       className="w-full aspect-video"
                       withSound
@@ -158,13 +166,32 @@ export default function Home() {
                         {t("hero.premiumDesc", language)}
                       </p>
                     </div>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-3xl font-bold text-white">
-                        {formatCurrency(10_000)}
-                      </span>
-                      <span className="text-gray-400">
-                        {t("hero.perMonth", language)}
-                      </span>
+                    <div className="rounded-xl bg-black/40 border border-white/10 px-4 py-3">
+                      <p className="text-xs text-gray-500 mb-1">
+                        {t("productDetail.fromPrice", language)}
+                      </p>
+                      <div className="flex flex-wrap items-baseline gap-2">
+                        {productsLoading ? (
+                          <Loader2
+                            className="animate-spin text-netflix-red"
+                            size={28}
+                            aria-hidden
+                          />
+                        ) : heroFromPrice != null ? (
+                          <span className="text-3xl sm:text-4xl font-black text-white tabular-nums tracking-tight">
+                            {formatCurrency(heroFromPrice)}
+                          </span>
+                        ) : (
+                          <span className="text-lg text-gray-400">
+                            {t("marketplace.comingSoon", language)}
+                          </span>
+                        )}
+                        {heroFromPrice != null && (
+                          <span className="text-gray-400 text-sm">
+                            {t("hero.perMonth", language)}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </motion.div>

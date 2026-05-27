@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { purchasedAccountUserEmbed } from '@/lib/supabase/embeds'
 
 export type SlotDetail = {
   slot_number: number
@@ -45,7 +46,7 @@ export async function fetchActivePoolRentals(supabase: SupabaseClient) {
     .from('purchased_accounts')
     .select(
       `id, pool_account_id, slot_assignments, product_name, expires_at, status,
-       users ( email, full_name )`,
+       ${purchasedAccountUserEmbed} ( email, full_name )`,
     )
     .eq('status', 'active')
     .not('pool_account_id', 'is', null)

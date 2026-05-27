@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { purchasedAccountUserEmbed } from '@/lib/supabase/embeds'
 import {
   sendExpiryReminderEmail,
   sendExpiryNoticeEmail,
@@ -34,7 +35,7 @@ export async function GET(request: Request) {
   // Nhắc trước 3 ngày (cửa sổ 24h)
   const { data: soon } = await supabase
     .from('purchased_accounts')
-    .select('id, user_id, product_name, expires_at, users ( email, full_name, language )')
+    .select(`id, user_id, product_name, expires_at, ${purchasedAccountUserEmbed} ( email, full_name, language )`)
     .eq('status', 'active')
     .is('reminder_3d_sent_at', null)
     .gte('expires_at', in3days.toISOString())
@@ -67,7 +68,7 @@ export async function GET(request: Request) {
   // Đã hết hạn
   const { data: ended } = await supabase
     .from('purchased_accounts')
-    .select('id, user_id, product_name, expires_at, users ( email, full_name, language )')
+    .select(`id, user_id, product_name, expires_at, ${purchasedAccountUserEmbed} ( email, full_name, language )`)
     .eq('status', 'active')
     .is('expiry_notice_sent_at', null)
     .lt('expires_at', now.toISOString())

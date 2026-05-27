@@ -117,6 +117,8 @@
   /** Glass panel + viền gradient đỏ nhẹ (hero, card nổi bật) */
   .glass-dark-red-edge {
     @apply relative bg-black/40 backdrop-blur-lg shadow-2xl;
+    isolation: isolate;
+    overflow: visible;
     box-shadow:
       0 25px 50px -12px rgba(229, 9, 20, 0.22),
       0 0 40px -8px rgba(229, 9, 20, 0.12);
@@ -157,6 +159,8 @@
   /** Viền gradient đỏ rất nhẹ — card phụ (floating) */
   .glass-dark-red-edge-soft {
     @apply relative bg-black/40 backdrop-blur-lg shadow-lg;
+    isolation: isolate;
+    overflow: visible;
     box-shadow:
       0 10px 25px -8px rgba(0, 0, 0, 0.4),
       0 0 20px -10px rgba(229, 9, 20, 0.08);
@@ -233,6 +237,17 @@
 
   .btn-primary-red:active {
     transform: scale(0.98);
+  }
+
+  /** Input số / select admin — đồng bộ dark theme */
+  .field-netflix {
+    @apply w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm;
+    @apply focus:outline-none focus:border-netflix-red/60 focus:ring-2 focus:ring-netflix-red/20;
+    @apply transition-colors;
+  }
+
+  .field-netflix:disabled {
+    @apply opacity-50 cursor-not-allowed;
   }
 
   .text-gradient {

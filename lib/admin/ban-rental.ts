@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { purchasedAccountUserEmbed } from '@/lib/supabase/embeds'
 import { isSupabaseConfigured } from '@/lib/auth/login'
 import { sendAccountBannedEmail } from '@/lib/email/send'
 import type { Lang } from '@/lib/translations'
@@ -19,7 +20,7 @@ export async function banPurchasedAccount(input: {
     .from('purchased_accounts')
     .select(
       `id, user_id, product_name, plan_type, status, pool_account_id, slots_count,
-       users ( email, full_name, language )`,
+       ${purchasedAccountUserEmbed} ( email, full_name, language )`,
     )
     .eq('id', input.rentalId)
     .single()

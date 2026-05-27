@@ -322,7 +322,7 @@ export default function AdminPoolPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t('admin.searchPoolPlaceholder', language)}
-              className="w-full bg-black/40 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-white text-sm"
+              className="field-netflix pl-9"
             />
           </div>
         </div>
@@ -331,7 +331,7 @@ export default function AdminPoolPage() {
           <select
             value={filterProductId}
             onChange={(e) => setFilterProductId(e.target.value)}
-            className="bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white text-sm min-w-[180px]"
+            className="field-netflix min-w-[180px]"
           >
             <option value="">{t('admin.allProducts', language)}</option>
             {catalog.map((p) => (
@@ -346,7 +346,7 @@ export default function AdminPoolPage() {
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white text-sm min-w-[140px]"
+            className="field-netflix min-w-[140px]"
           >
             <option value="">{t('admin.allStatuses', language)}</option>
             <option value="active">active</option>
@@ -365,7 +365,7 @@ export default function AdminPoolPage() {
           <select
             value={form.product_id}
             onChange={(e) => setForm({ ...form, product_id: e.target.value })}
-            className="bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white text-sm"
+            className="field-netflix"
           >
             <option value="">{t('admin.selectProduct', language)}</option>
             {catalog.map((p) => (
@@ -378,13 +378,13 @@ export default function AdminPoolPage() {
             placeholder={t('admin.loginEmail', language)}
             value={form.service_email}
             onChange={(e) => setForm({ ...form, service_email: e.target.value })}
-            className="bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white text-sm"
+            className="field-netflix"
           />
           <input
             placeholder={t('admin.password', language)}
             value={form.service_password}
             onChange={(e) => setForm({ ...form, service_password: e.target.value })}
-            className="bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white text-sm"
+            className="field-netflix"
           />
           <button
             onClick={createAccount}
@@ -445,7 +445,7 @@ export default function AdminPoolPage() {
                   <select
                     value={acc.status}
                     onChange={(e) => patchAccount(acc.id, { status: e.target.value })}
-                    className="bg-black/40 border border-white/10 rounded px-2 py-1 text-white text-sm"
+                    className="field-netflix py-1.5"
                   >
                     <option value="active">active</option>
                     <option value="full">full</option>
@@ -473,7 +473,7 @@ export default function AdminPoolPage() {
                         <select
                           value={acc.product_id || ''}
                           onChange={(e) => patchAccount(acc.id, { product_id: e.target.value || null })}
-                          className="block w-full mt-1 bg-black/40 border border-white/10 rounded px-2 py-1 text-white text-sm"
+                          className="field-netflix mt-1"
                         >
                           <option value="">{t('admin.noProduct', language)}</option>
                           {catalog.map((p) => (
@@ -488,7 +488,7 @@ export default function AdminPoolPage() {
                         <input
                           value={acc.service_email}
                           onChange={(e) => patchAccount(acc.id, { service_email: e.target.value })}
-                          className="block w-full mt-1 bg-black/40 border border-white/10 rounded px-2 py-1 text-white text-sm"
+                          className="field-netflix mt-1"
                         />
                       </label>
                       <label className="text-xs text-gray-400">
@@ -496,7 +496,7 @@ export default function AdminPoolPage() {
                         <input
                           value={acc.service_password}
                           onChange={(e) => patchAccount(acc.id, { service_password: e.target.value })}
-                          className="block w-full mt-1 bg-black/40 border border-white/10 rounded px-2 py-1 text-white text-sm"
+                          className="field-netflix mt-1"
                         />
                       </label>
                       <label className="text-xs text-gray-400">
@@ -509,7 +509,7 @@ export default function AdminPoolPage() {
                           onChange={(e) =>
                             patchAccount(acc.id, { slots_used: Number(e.target.value) })
                           }
-                          className="block w-full mt-1 bg-black/40 border border-white/10 rounded px-2 py-1 text-white text-sm"
+                          className="field-netflix mt-1"
                         />
                       </label>
                     </div>
@@ -535,14 +535,14 @@ export default function AdminPoolPage() {
                                 onChange={(e) =>
                                   updateSlot(acc.id, idx, 'profile_name', e.target.value)
                                 }
-                                className="w-full bg-black/40 border border-white/10 rounded px-2 py-1 text-white"
+                                className="field-netflix"
                               />
                             </td>
                             <td>
                               <input
                                 value={acc.slot_details?.[idx]?.pin ?? s.pin ?? ''}
                                 onChange={(e) => updateSlot(acc.id, idx, 'pin', e.target.value)}
-                                className="w-full bg-black/40 border border-white/10 rounded px-2 py-1 text-white"
+                                className="field-netflix"
                               />
                             </td>
                             <td className="py-2">
@@ -620,7 +620,7 @@ export default function AdminPoolPage() {
             <select
               value={banReasonId}
               onChange={(e) => setBanReasonId(e.target.value)}
-              className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white mb-3 max-h-48"
+              className="field-netflix mb-3 max-h-48"
             >
               {groupedReasons.map((group) => (
                 <optgroup key={group.label} label={group.label}>
@@ -637,7 +637,7 @@ export default function AdminPoolPage() {
               value={banNote}
               onChange={(e) => setBanNote(e.target.value)}
               rows={3}
-              className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white mb-4"
+              className="field-netflix mb-4 min-h-[88px]"
               placeholder={t('admin.banNotePlaceholder', language)}
             />
             <p className="text-xs text-gray-500 mb-4">{t('admin.banEmailHint', language)}</p>
