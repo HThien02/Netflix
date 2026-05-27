@@ -1,26 +1,17 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { AppLayout } from "@/components/app-layout";
 import { useApp } from "@/lib/context";
 import { t } from "@/lib/translations";
 import { motion } from "framer-motion";
-import { ArrowRight, Play, Zap, Users, BarChart3, Loader2 } from "lucide-react";
+import { ArrowRight, Play, Zap, Users, BarChart3 } from "lucide-react";
 import { NetflixIntroVideo } from "@/components/netflix-intro-video";
-import { formatCurrency } from "@/lib/utils/format";
-import { useProducts } from "@/lib/hooks/use-products";
-import { getCheapestPurchasablePrice } from "@/lib/products/hero-price";
 
 export default function Home() {
   const { language, isAuthenticated } = useApp();
-  const { products, loading: productsLoading } = useProducts();
-
-  const heroFromPrice = useMemo(
-    () => getCheapestPurchasablePrice(products),
-    [products],
-  );
 
   const fadeInUp = {
     initial: { opacity: 0, y: 30 },
@@ -165,33 +156,6 @@ export default function Home() {
                       <p className="text-gray-400 text-sm">
                         {t("hero.premiumDesc", language)}
                       </p>
-                    </div>
-                    <div className="rounded-xl bg-black/40 border border-white/10 px-4 py-3">
-                      <p className="text-xs text-gray-500 mb-1">
-                        {t("productDetail.fromPrice", language)}
-                      </p>
-                      <div className="flex flex-wrap items-baseline gap-2">
-                        {productsLoading ? (
-                          <Loader2
-                            className="animate-spin text-netflix-red"
-                            size={28}
-                            aria-hidden
-                          />
-                        ) : heroFromPrice != null ? (
-                          <span className="text-3xl sm:text-4xl font-black text-white tabular-nums tracking-tight">
-                            {formatCurrency(heroFromPrice)}
-                          </span>
-                        ) : (
-                          <span className="text-lg text-gray-400">
-                            {t("marketplace.comingSoon", language)}
-                          </span>
-                        )}
-                        {heroFromPrice != null && (
-                          <span className="text-gray-400 text-sm">
-                            {t("hero.perMonth", language)}
-                          </span>
-                        )}
-                      </div>
                     </div>
                   </div>
                 </motion.div>
